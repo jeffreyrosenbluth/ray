@@ -36,7 +36,7 @@ impl HitRecord {
     ) -> Self {
         Self {
             p,
-            normal: normal.normalize(),
+            normal,
             material,
             t,
             front_face,
@@ -44,11 +44,11 @@ impl HitRecord {
     }
 
     pub fn set_face_normal(&mut self, r: &Ray, outward_normal: Vec3) {
-        let front_face = r.direction.dot(outward_normal) < 0.0;
-        self.normal = if front_face {
-            outward_normal.normalize()
+        self.front_face = r.direction.dot(outward_normal) < 0.0;
+        self.normal = if self.front_face {
+            outward_normal
         } else {
-            -outward_normal.normalize()
+            -outward_normal
         };
     }
 }
@@ -159,25 +159,25 @@ fn schlick(cosine: f64, ir: f64) -> f64 {
     r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
 }
 
-impl Material for Dielectric{
+impl Material for Dielectric {
     fn scatter(&self, ray: &Ray, hit: &HitRecord) -> Option<(Color, Ray)> {
-        let attenuation = ONE;
-        let (outward_normal, ni_over_nt, cosine) = if ray.direction.dot(hit.normal) > 0.0 {
-            let cosine = self.ir * ray.direction.dot(hit.normal) / ray.direction.length();
-            (-hit.normal, self.ir, cosine)
+        let attenuation = WHITE;
+        let refraction_ratio = if hit.front_face {
+            1.0 / self.ir
         } else {
-            let cosine = -ray.direction.dot(hit.normal) / ray.direction.length();
-            (hit.normal, 1.0 / self.ir, cosine)
+            self.ir
         };
-        if let Some(refracted) = ray.direction.refract(outward_normal, ni_over_nt) {
-            let reflect_prob = schlick(cosine, self.ir);
-            if rand::thread_rng().gen::<f64>() >= reflect_prob {
-                let scattered = Ray::new(hit.p, refracted);
-                return Some((attenuation, scattered))
-            }
-        }
-        let reflected = ray.direction.reflect(hit.normal);
-        let scattered = Ray::new(hit.p, reflected);
+        let unit_direction = ray.direction.normalize();
+        let cos_theta = (-unit_direction).dot(hit.normal).min(1.0);
+        let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
+        let cannot_refract = refraction_ratio * sin_theta > 1.0;
+        let direction =
+            if cannot_refract || schlick(cos_theta, refraction_ratio) > thread_rng().gen::<f64>() {
+                unit_direction.reflect(hit.normal)
+            } else {
+                unit_direction.refract(hit.normal, refraction_ratio)
+            };
+        let scattered = Ray::new(hit.p, direction);
         Some((attenuation, scattered))
     }
 }

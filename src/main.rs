@@ -74,10 +74,26 @@ fn glass_scene() -> Objects {
     let mat_left = Arc::new(Dielectric::new(1.5));
     let mat_right = Arc::new(Lambertian::new(Color::new(0.8, 0.6, 0.2)));
 
-    world.add(Box::new(Sphere::new(point3(0.0, -100.5, -1.0), 100.0, mat_ground)));
-    world.add(Box::new(Sphere::new(point3(0.0, 0.0, -1.0), 0.5, mat_center)));
-    world.add(Box::new(Sphere::new(point3(-1.0, 0.0, -1.0), 0.5, mat_left)));
-    world.add(Box::new(Sphere::new(point3(1.0, 0.0, -1.0), 0.5, mat_right)));
+    world.add(Box::new(Sphere::new(
+        point3(0.0, -100.5, -1.0),
+        100.0,
+        mat_ground,
+    )));
+    world.add(Box::new(Sphere::new(
+        point3(0.0, 0.0, -1.0),
+        0.5,
+        mat_center,
+    )));
+    world.add(Box::new(Sphere::new(
+        point3(-1.0, 0.0, -1.0),
+        0.5,
+        mat_left,
+    )));
+    world.add(Box::new(Sphere::new(
+        point3(1.0, 0.0, -1.0),
+        0.5,
+        mat_right,
+    )));
 
     world
 }
@@ -141,17 +157,25 @@ fn random_scene() -> Objects {
 }
 fn main() {
     // Image
-    const ASPECT_RATIO: f64 = 16.0 / 9.0;
-    const IMAGE_WIDTH: u32 = 800;
+    const ASPECT_RATIO: f64 = 1.5;
+    const IMAGE_WIDTH: u32 = 1200;
     const IMAGE_HEIGHT: u32 = ((IMAGE_WIDTH as f64) / ASPECT_RATIO) as u32;
-    const SAMPLES_PER_PIXEL: u32 = 100;
+    const SAMPLES_PER_PIXEL: u32 = 500;
     const MAX_DEPTH: u32 = 50;
 
     // World
-    let world = glass_scene();
+    let world = random_scene();
 
     // Camera
-    let cam = Camera::default();
+    let cam = Camera::new(
+        point3(12.0, 2.0, 3.0),
+        ZERO,
+        vec3(0.0, 1.0, 0.0),
+        20.0,
+        ASPECT_RATIO,
+        0.1,
+        10.0,
+    );
 
     let mut data: Vec<u8> = Vec::new();
     let w = IMAGE_WIDTH;
