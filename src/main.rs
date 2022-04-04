@@ -85,7 +85,7 @@ fn main() {
     let sphere_ground = Sphere::new(point3(0.0, -100.5, -1.0), 100.0, material_ground);
     let sphere_center = Sphere::new(point3(0.0, 0.0, -1.0), 0.5, material_center);
     let sphere_left = Sphere::new(point3(-1.0, 0.0, -1.0), 0.5, material_left.clone());
-    let sphere_inner = Sphere::new(point3(-1.0, 0.0, -1.0), -0.45, material_left.clone());
+    let sphere_inner = Sphere::new(point3(-1.0, 0.0, -1.0), -0.4, material_left.clone());
     let sphere_right = Sphere::new(point3(1.0, 0.0, -1.0), 0.5, material_right);
 
     world.add(Box::new(sphere_ground));
@@ -95,7 +95,22 @@ fn main() {
     world.add(Box::new(sphere_right));
 
     // Camera
-    let cam = Camera::default();
+    let lookfrom = point3(3.0, 3.0, 2.0);
+    let lookat = point3(0.0, 0.0, -1.0);
+    let vup = vec3(0.0 ,1.0, 0.0);
+    let vfov = 20.0;
+    let dist_to_focus = (lookfrom-lookat).length();
+    let aperture = 2.0;
+
+    let cam = Camera::new(
+        lookfrom,
+        lookat,
+        vup,
+        vfov,
+        aspect_ratio,
+        aperture,
+        dist_to_focus
+    );
 
     let mut data: Vec<u8> = Vec::new();
     let w = image_width;

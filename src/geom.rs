@@ -212,3 +212,12 @@ pub fn random_in_unit_sphere<R: Rng + ?Sized>(rng: &mut R) -> Vec3 {
 pub fn random_unit_vector<R: Rng + ?Sized>(rng: &mut R) -> Vec3 {
     random_in_unit_sphere(rng).normalize()
 }
+
+pub fn random_in_unit_disk<R: Rng>(rng: &mut R) -> Vec3 {
+    loop {
+        let p = Vec3::new(rng.gen_range(-1.0..1.0), rng.gen_range(-1.0..1.0), 0.0);
+        if p.length() < 1.0 {
+            return p;
+        }
+    }
+}
