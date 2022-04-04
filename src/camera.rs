@@ -58,3 +58,17 @@ impl Camera {
         )
     }
 }
+
+impl Default for Camera {
+    fn default() -> Self {
+        Camera::new(
+            point3(0.0, 0.0, 1.0),
+            point3(0.0, 0.0, 0.0),
+            vec3(0.0, 1.0, 0.0),
+            45.0,
+            16.0 / 9.0,
+            0.0,
+            1.0,
+        )
+    }
+}

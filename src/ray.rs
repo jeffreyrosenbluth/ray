@@ -1,6 +1,6 @@
 use crate::geom::*;
 use rand::prelude::*;
-use std::rc::Rc;
+use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy)]
 pub struct Ray {
@@ -21,7 +21,7 @@ impl Ray {
 pub struct HitRecord {
     pub p: Point3,
     pub normal: Vec3,
-    pub material: Rc<dyn Material>,
+    pub material: Arc<dyn Material>,
     pub t: f64,
     pub front_face: bool,
 }
@@ -30,7 +30,7 @@ impl HitRecord {
     pub fn new(
         p: Point3,
         normal: Vec3,
-        material: Rc<dyn Material>,
+        material: Arc<dyn Material>,
         t: f64,
         front_face: bool,
     ) -> Self {
@@ -53,9 +53,8 @@ impl HitRecord {
     }
 }
 
-pub trait Object {
+pub trait Object: Send + Sync {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
-    // fn hit(&self, r: &Ray, t_min: f64, t_max: f64, rec: &mut HitRecord) -> bool;
 }
 
 pub struct Objects {
@@ -90,7 +89,7 @@ impl Object for Objects {
     }
 }
 
-pub trait Material {
+pub trait Material: Send + Sync {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
 }
 pub struct Lambertian {
@@ -161,34 +160,24 @@ fn schlick(cosine: f64, ir: f64) -> f64 {
 }
 
 impl Material for Dielectric{
-    fn scatter(&self, r_in: &Ray, hit_record: &HitRecord) -> Option<(Color, Ray)> {
-        let mut rng = thread_rng();
-        let reflected: Vec3 = r_in.direction.reflect(hit_record.normal);
+    fn scatter(&self, ray: &Ray, hit: &HitRecord) -> Option<(Color, Ray)> {
         let attenuation = ONE;
-        let (outward_normal, ni_over_nt, cosine) =
-            if r_in.direction.dot(hit_record.normal) > 0.0 {
-                let cosine: f64 = self.ir * r_in.direction.dot(hit_record.normal) / r_in.direction.length();
-                (-hit_record.normal, self.ir, cosine)
-            } else {
-                let cosine: f64 = -r_in.direction.dot(hit_record.normal) / r_in.direction.length();
-                (hit_record.normal, 1.0 / self.ir, cosine)
-            };
-
-        let reflect_prob = schlick(cosine, self.ir);
-        let r: f64 = rng.gen();
-        match r_in.direction.refract(outward_normal, ni_over_nt) {
-            Some(refracted) if reflect_prob <= r => {
-                Some((
-                    attenuation,
-                    Ray {origin: hit_record.p, direction: refracted}
-                ))
-            },
-            _ => {
-               Some((
-                    attenuation,
-                    Ray{origin: hit_record.p, direction: reflected}
-                ))
+        let (outward_normal, ni_over_nt, cosine) = if ray.direction.dot(hit.normal) > 0.0 {
+            let cosine = self.ir * ray.direction.dot(hit.normal) / ray.direction.length();
+            (-hit.normal, self.ir, cosine)
+        } else {
+            let cosine = -ray.direction.dot(hit.normal) / ray.direction.length();
+            (hit.normal, 1.0 / self.ir, cosine)
+        };
+        if let Some(refracted) = ray.direction.refract(outward_normal, ni_over_nt) {
+            let reflect_prob = schlick(cosine, self.ir);
+            if rand::thread_rng().gen::<f64>() >= reflect_prob {
+                let scattered = Ray::new(hit.p, refracted);
+                return Some((attenuation, scattered))
             }
         }
+        let reflected = ray.direction.reflect(hit.normal);
+        let scattered = Ray::new(hit.p, reflected);
+        Some((attenuation, scattered))
     }
 }

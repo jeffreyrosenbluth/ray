@@ -1,16 +1,20 @@
 use crate::geom::*;
 use crate::ray::*;
-use std::rc::Rc;
+use std::sync::Arc;
 
 pub struct Sphere {
     pub center: Point3,
     pub radius: f64,
-    pub material: Rc<dyn Material>,
+    pub material: Arc<dyn Material>,
 }
 
 impl Sphere {
-    pub fn new(center: Point3, radius: f64, material: Rc<dyn Material>) -> Self {
-        Self { center, radius, material }
+    pub fn new(center: Point3, radius: f64, material: Arc<dyn Material>) -> Self {
+        Self {
+            center,
+            radius,
+            material,
+        }
     }
 }
 
@@ -20,17 +24,20 @@ impl Object for Sphere {
         let a = r.direction.length2();
         let half_b = oc.dot(r.direction);
         let c = oc.length2() - self.radius * self.radius;
-    
+
         let discriminant = half_b * half_b - a * c;
-        if discriminant < 0.0 {return None};
+        if discriminant < 0.0 {
+            return None;
+        };
+
         let sqrtd = discriminant.sqrt();
-    
         // Find the nearest root that lies in the acceptable range.
         let mut root = (-half_b - sqrtd) / a;
         if root < t_min || t_max < root {
             root = (-half_b + sqrtd) / a;
             if root < t_min || t_max < root {
-                return None };
+                return None;
+            };
         }
         let p = r.at(root);
         let mut rec = HitRecord {
@@ -43,5 +50,5 @@ impl Object for Sphere {
         let outward_normal = (rec.p - self.center) / self.radius;
         rec.set_face_normal(r, outward_normal);
         Some(rec)
-    } 
+    }
 }

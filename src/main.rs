@@ -3,11 +3,12 @@ use geom::*;
 use png::*;
 use rand::prelude::*;
 use ray::*;
+use rayon::prelude::*;
 use sphere::*;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::PathBuf;
-use std::rc::Rc;
+use std::sync::Arc;
 
 mod camera;
 mod geom;
@@ -28,7 +29,6 @@ fn write_color(data: &mut Vec<u8>, pixel_color: Color, samples_per_pixel: u32) {
     data.push((255.999 * r) as u8);
     data.push((255.999 * g) as u8);
     data.push((255.999 * b) as u8);
-    data.push(255);
 }
 
 fn write_png(data: &[u8], width: u32, height: u32, name: &'static str) {
@@ -44,19 +44,19 @@ fn write_png(data: &[u8], width: u32, height: u32, name: &'static str) {
     let file = File::create(&sketch).unwrap();
     let ref mut w = BufWriter::new(file);
     let mut encoder = Encoder::new(w, width, height);
-    encoder.set_color(ColorType::Rgba);
+    encoder.set_color(ColorType::Rgb);
     encoder.set_depth(BitDepth::Eight);
     let mut writer = encoder.write_header().unwrap();
     writer.write_image_data(data).unwrap();
 }
 
-fn ray_color<R: Rng + ?Sized>(rng: &mut R, r: &Ray, world: &Objects, depth: u32) -> Color {
+fn ray_color(r: &Ray, world: &Objects, depth: u32) -> Color {
     if depth <= 0 {
-        return ZERO;
+        return BLACK;
     }
     if let Some(rec) = world.hit(r, 0.001, INFINITY) {
         if let Some((attenuation, scattered)) = rec.material.scatter(r, &rec) {
-            attenuation * ray_color(rng, &scattered, world, depth - 1)
+            attenuation * ray_color(&scattered, world, depth - 1)
         } else {
             BLACK
         }
@@ -67,67 +67,120 @@ fn ray_color<R: Rng + ?Sized>(rng: &mut R, r: &Ray, world: &Objects, depth: u32)
     }
 }
 
+fn glass_scene() -> Objects {
+    let mut world = Objects::new(Vec::new());
+    let mat_ground = Arc::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
+    let mat_center = Arc::new(Dielectric::new(1.5));
+    let mat_left = Arc::new(Dielectric::new(1.5));
+    let mat_right = Arc::new(Lambertian::new(Color::new(0.8, 0.6, 0.2)));
+
+    world.add(Box::new(Sphere::new(point3(0.0, -100.5, -1.0), 100.0, mat_ground)));
+    world.add(Box::new(Sphere::new(point3(0.0, 0.0, -1.0), 0.5, mat_center)));
+    world.add(Box::new(Sphere::new(point3(-1.0, 0.0, -1.0), 0.5, mat_left)));
+    world.add(Box::new(Sphere::new(point3(1.0, 0.0, -1.0), 0.5, mat_right)));
+
+    world
+}
+
+fn random_scene() -> Objects {
+    let mut rng = rand::thread_rng();
+    let mut world = Objects::new(Vec::new());
+
+    let ground_mat = Arc::new(Lambertian::new(Color::new(0.5, 0.5, 0.5)));
+    let ground_sphere = Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, ground_mat);
+
+    world.add(Box::new(ground_sphere));
+
+    for a in -11..=11 {
+        for b in -11..=11 {
+            let choose_mat: f64 = rng.gen();
+            let center = Point3::new(
+                (a as f64) + rng.gen_range(0.0..0.9),
+                0.2,
+                (b as f64) + rng.gen_range(0.0..0.9),
+            );
+
+            if choose_mat < 0.8 {
+                // Diffuse
+                let albedo = rand_color(&mut rng, 0.0..1.0) * rand_color(&mut rng, 0.0..1.0);
+                let sphere_mat = Arc::new(Lambertian::new(albedo));
+                let sphere = Sphere::new(center, 0.2, sphere_mat);
+
+                world.add(Box::new(sphere));
+            } else if choose_mat < 0.95 {
+                // Metal
+                let albedo = rand_color(&mut rng, 0.4..1.0);
+                let fuzz = rng.gen_range(0.0..0.5);
+                let sphere_mat = Arc::new(Metal::new(albedo, fuzz));
+                let sphere = Sphere::new(center, 0.2, sphere_mat);
+
+                world.add(Box::new(sphere));
+            } else {
+                // Glass
+                let sphere_mat = Arc::new(Dielectric::new(1.5));
+                let sphere = Sphere::new(center, 0.2, sphere_mat);
+
+                world.add(Box::new(sphere));
+            }
+        }
+    }
+
+    let mat1 = Arc::new(Dielectric::new(1.5));
+    let mat2 = Arc::new(Lambertian::new(Color::new(0.4, 0.2, 0.1)));
+    let mat3 = Arc::new(Metal::new(Color::new(0.7, 0.6, 0.5), 0.0));
+
+    let sphere1 = Sphere::new(Point3::new(0.0, 1.0, 0.0), 1.0, mat1);
+    let sphere2 = Sphere::new(Point3::new(-4.0, 1.0, 0.0), 1.0, mat2);
+    let sphere3 = Sphere::new(Point3::new(4.0, 1.0, 0.0), 1.0, mat3);
+
+    world.add(Box::new(sphere1));
+    world.add(Box::new(sphere2));
+    world.add(Box::new(sphere3));
+
+    world
+}
 fn main() {
     // Image
-    let aspect_ratio = 16.0 / 9.0;
-    let image_width = 800;
-    let image_height = (image_width as f64 / aspect_ratio) as u32;
-    let samples_per_pixel = 100;
-    let max_depth = 50;
+    const ASPECT_RATIO: f64 = 16.0 / 9.0;
+    const IMAGE_WIDTH: u32 = 800;
+    const IMAGE_HEIGHT: u32 = ((IMAGE_WIDTH as f64) / ASPECT_RATIO) as u32;
+    const SAMPLES_PER_PIXEL: u32 = 100;
+    const MAX_DEPTH: u32 = 50;
 
     // World
-    let mut world = Objects::new(Vec::new());
-    let material_ground = Rc::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
-    let material_center = Rc::new(Lambertian::new(Color::new(0.1, 0.2, 0.5)));
-    let material_left = Rc::new(Dielectric::new(1.5));
-    let material_right = Rc::new(Metal::new(Color::new(0.8, 0.6, 0.2), 0.0));
-
-    let sphere_ground = Sphere::new(point3(0.0, -100.5, -1.0), 100.0, material_ground);
-    let sphere_center = Sphere::new(point3(0.0, 0.0, -1.0), 0.5, material_center);
-    let sphere_left = Sphere::new(point3(-1.0, 0.0, -1.0), 0.5, material_left.clone());
-    let sphere_inner = Sphere::new(point3(-1.0, 0.0, -1.0), -0.4, material_left.clone());
-    let sphere_right = Sphere::new(point3(1.0, 0.0, -1.0), 0.5, material_right);
-
-    world.add(Box::new(sphere_ground));
-    world.add(Box::new(sphere_center));
-    world.add(Box::new(sphere_left));
-    world.add(Box::new(sphere_inner));
-    world.add(Box::new(sphere_right));
+    let world = glass_scene();
 
     // Camera
-    let lookfrom = point3(3.0, 3.0, 2.0);
-    let lookat = point3(0.0, 0.0, -1.0);
-    let vup = vec3(0.0 ,1.0, 0.0);
-    let vfov = 20.0;
-    let dist_to_focus = (lookfrom-lookat).length();
-    let aperture = 2.0;
-
-    let cam = Camera::new(
-        lookfrom,
-        lookat,
-        vup,
-        vfov,
-        aspect_ratio,
-        aperture,
-        dist_to_focus
-    );
+    let cam = Camera::default();
 
     let mut data: Vec<u8> = Vec::new();
-    let w = image_width;
-    let h = image_height;
-    let mut rng = thread_rng();
-    for j in (0..h).rev() {
-        for i in 0..w {
-            let mut pixel_color = BLACK;
-            for _ in 0..samples_per_pixel {
-                let i_rand: f64 = rng.gen();
-                let j_rand: f64 = rng.gen();
-                let u = (i as f64 + i_rand) / (image_width as f64 - 1.0);
-                let v = (j as f64 + j_rand) / (image_height as f64 - 1.0);
-                let r = cam.get_ray(u, v);
-                pixel_color += ray_color(&mut rng, &r, &world, max_depth);
-            }
-            write_color(&mut data, pixel_color, samples_per_pixel);
+    let w = IMAGE_WIDTH;
+    let h = IMAGE_HEIGHT;
+
+    for j in (0..IMAGE_HEIGHT).rev() {
+        eprintln!("Scanlines remaining: {}", j + 1);
+
+        let scanline: Vec<Color> = (0..IMAGE_WIDTH)
+            .into_par_iter()
+            .map(|i| {
+                let mut pixel_color = BLACK;
+                for _ in 0..SAMPLES_PER_PIXEL {
+                    let mut rng = rand::thread_rng();
+                    let random_u: f64 = rng.gen();
+                    let random_v: f64 = rng.gen();
+
+                    let u = ((i as f64) + random_u) / ((IMAGE_WIDTH - 1) as f64);
+                    let v = ((j as f64) + random_v) / ((IMAGE_HEIGHT - 1) as f64);
+
+                    let r = cam.get_ray(u, v);
+                    pixel_color += ray_color(&r, &world, MAX_DEPTH);
+                }
+                pixel_color
+            })
+            .collect();
+
+        for pixel_color in scanline {
+            write_color(&mut data, pixel_color, SAMPLES_PER_PIXEL);
         }
     }
     write_png(&data, w, h, "image");

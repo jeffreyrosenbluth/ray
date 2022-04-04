@@ -4,10 +4,26 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssi
 
 pub const INFINITY: f64 = std::f64::MAX;
 pub const PI: f64 = std::f64::consts::PI;
-pub const BLACK: Color = Color {x: 0.0, y: 0.0, z: 0.0};
-pub const WHITE: Color = Color {x: 1.0, y: 1.0, z: 1.0};
-pub const ZERO: Vec3 = Vec3 {x: 0.0, y: 0.0, z: 0.0};
-pub const ONE: Vec3 = Vec3 {x: 1.0, y: 1.0, z: 1.0};
+pub const BLACK: Color = Color {
+    x: 0.0,
+    y: 0.0,
+    z: 0.0,
+};
+pub const WHITE: Color = Color {
+    x: 1.0,
+    y: 1.0,
+    z: 1.0,
+};
+pub const ZERO: Vec3 = Vec3 {
+    x: 0.0,
+    y: 0.0,
+    z: 0.0,
+};
+pub const ONE: Vec3 = Vec3 {
+    x: 1.0,
+    y: 1.0,
+    z: 1.0,
+};
 
 pub fn degrees_to_radians(degrees: f64) -> f64 {
     degrees * PI / 180.0
@@ -197,7 +213,7 @@ impl Distribution<Vec3> for Standard {
     }
 }
 
-pub fn random_in_unit_sphere<R: Rng + ?Sized>(rng: &mut R) -> Vec3 {
+pub fn random_in_unit_sphere<R: Rng>(rng: &mut R) -> Vec3 {
     let mut p: Point3;
     loop {
         p = rng.gen();
@@ -209,7 +225,7 @@ pub fn random_in_unit_sphere<R: Rng + ?Sized>(rng: &mut R) -> Vec3 {
     p
 }
 
-pub fn random_unit_vector<R: Rng + ?Sized>(rng: &mut R) -> Vec3 {
+pub fn random_unit_vector<R: Rng>(rng: &mut R) -> Vec3 {
     random_in_unit_sphere(rng).normalize()
 }
 
@@ -220,4 +236,11 @@ pub fn random_in_unit_disk<R: Rng>(rng: &mut R) -> Vec3 {
             return p;
         }
     }
+}
+
+pub fn rand_color<R: Rng>(rng: &mut R, range: std::ops::Range<f64>) -> Color {
+    let x: f64 = rng.gen_range(range.clone());
+    let y: f64 = rng.gen_range(range.clone());
+    let z: f64 = rng.gen_range(range);
+    Color { x, y, z }
 }
