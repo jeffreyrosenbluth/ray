@@ -1,9 +1,9 @@
-use rand::thread_rng;
+use rand::prelude::*;
 
 use crate::geom::*;
-use crate::ray::*;
+use crate::object::*;
 
-#[derive(Debug, Clone, Copy)]
+#[derive(Debug, Clone)]
 pub struct Camera {
     pub origin: Point3,
     pub lookat: Point3,
@@ -13,6 +13,7 @@ pub struct Camera {
     lower_left_corner: Point3,
     u: Vec3,
     v: Vec3,
+    exposure: std::ops::Range<f64>,
 }
 
 impl Camera {
@@ -24,14 +25,14 @@ impl Camera {
         aspect_ratio: f64,
         aperture: f64,
         focus_dist: f64,
+        exposure: std::ops::Range<f64>,
     ) -> Self {
         let theta = degrees_to_radians(vfov);
-        let h = (theta / 2.0).tan();
-        let viewport_height = 2.0 * h;
+        let viewport_height = 2.0 * (theta / 2.0).tan();
         let viewport_width = aspect_ratio * viewport_height;
         let w = (origin - lookat).normalize();
-        let u = vup.cross(w).normalize();
-        let v = w.cross(u);
+        let u = cross(vup, w).normalize();
+        let v = cross(w, u);
 
         let horizontal = focus_dist * viewport_width * u;
         let vertical = focus_dist * viewport_height * v;
@@ -45,6 +46,7 @@ impl Camera {
             lower_left_corner,
             u,
             v,
+            exposure,
         }
     }
 
@@ -52,9 +54,11 @@ impl Camera {
         let mut rng = thread_rng();
         let rd = self.aperture / 2.0 * random_in_unit_disk(&mut rng);
         let offset = self.u * rd.x + self.v * rd.y;
+        let time = rng.gen_range(self.exposure.start..self.exposure.end);
         Ray::new(
             self.origin + offset,
             self.lower_left_corner + s * self.horizontal + t * self.vertical - self.origin - offset,
+            time,
         )
     }
 }
@@ -69,6 +73,7 @@ impl Default for Camera {
             16.0 / 9.0,
             0.0,
             1.0,
+            0.0..0.0,
         )
     }
 }

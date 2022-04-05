@@ -9,16 +9,19 @@ pub const BLACK: Color = Color {
     y: 0.0,
     z: 0.0,
 };
+
 pub const WHITE: Color = Color {
     x: 1.0,
     y: 1.0,
     z: 1.0,
 };
+
 pub const ZERO: Vec3 = Vec3 {
     x: 0.0,
     y: 0.0,
     z: 0.0,
 };
+
 pub const ONE: Vec3 = Vec3 {
     x: 1.0,
     y: 1.0,
@@ -52,47 +55,16 @@ impl Vec3 {
         Self { x, y, z }
     }
 
-    pub fn scale(self, k: f64) -> Self {
-        self * k
-    }
-
-    pub fn lerp(self, other: Self, t: f64) -> Self {
-        let x = self.x * (1.0 - t) + t * other.x;
-        let y = self.y * (1.0 - t) + t * other.y;
-        let z = self.z * (1.0 - t) + t * other.z;
-        Vec3 { x, y, z }
-    }
-
     pub fn length2(self) -> f64 {
-        self.dot(self)
+        dot(self, self)
     }
 
     pub fn length(self) -> f64 {
         self.length2().sqrt()
     }
 
-    pub fn dist2(self, other: Self) -> f64 {
-        vec3(self.x - other.x, self.y - other.y, self.z - other.z).length2()
-    }
-
-    pub fn dist(self, other: Self) -> f64 {
-        vec3(self.x - other.x, self.y - other.y, self.z - other.z).length()
-    }
-
-    pub fn dot(self, other: Self) -> f64 {
-        self.x * other.x + self.y * other.y + self.z * other.z
-    }
-
     pub fn normalize(self) -> Vec3 {
         self / self.length()
-    }
-
-    pub fn cross(self, v: Vec3) -> Vec3 {
-        vec3(
-            self.y * v.z - self.z * v.y,
-            self.z * v.x - self.x * v.z,
-            self.x * v.y - self.y * v.x,
-        )
     }
 
     pub fn near_zero(self) -> bool {
@@ -100,16 +72,44 @@ impl Vec3 {
         self.x.abs() < EPS && self.y.abs() < EPS && self.z.abs() < EPS
     }
 
-    pub fn reflect(self, n: Vec3) -> Vec3 {
-        self - 2.0 * self.dot(n) * n
+    pub fn map(self, f: fn(f64) -> f64) -> Self {
+        Self {
+            x: f(self.x),
+            y: f(self.y),
+            z: f(self.z),
+        }
     }
+}
 
-    pub fn refract(self, n: Vec3, ni_over_nt: f64) -> Vec3 {
-        let uv = self.normalize();
-        let dt = uv.dot(n);
-        let discriminant = 1.0 - ni_over_nt * ni_over_nt * (1.0 - dt * dt);
-        ni_over_nt * (uv - n * dt) - n * discriminant.sqrt()
-    }
+pub fn dist2(v: Vec3, w: Vec3) -> f64 {
+    vec3(v.x - w.x, v.y - w.y, v.z - w.z).length2()
+}
+
+pub fn dist(v: Vec3, w: Vec3) -> f64 {
+    vec3(v.x - w.x, v.y - w.y, v.z - w.z).length()
+}
+
+pub fn dot(v: Vec3, w: Vec3) -> f64 {
+    v.x * w.x + v.y * w.y + v.z * w.z
+}
+
+pub fn cross(v: Vec3, w: Vec3) -> Vec3 {
+    vec3(
+        v.y * w.z - v.z * w.y,
+        v.z * w.x - v.x * w.z,
+        v.x * w.y - v.y * w.x,
+    )
+}
+
+pub fn reflect(v: Vec3, n: Vec3) -> Vec3 {
+    v - 2.0 * dot(v, n) * n
+}
+
+pub fn refract(v: Vec3, n: Vec3, eta_ratio: f64) -> Vec3 {
+    let uv = v.normalize();
+    let dt = dot(uv, n);
+    let discriminant = 1.0 - eta_ratio * eta_ratio * (1.0 - dt * dt);
+    eta_ratio * (uv - n * dt) - n * discriminant.sqrt()
 }
 
 impl Neg for Vec3 {
@@ -124,7 +124,7 @@ impl Sub for Vec3 {
     type Output = Vec3;
 
     fn sub(self, rhs: Self) -> Self::Output {
-        Vec3::new(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
+        vec3(self.x - rhs.x, self.y - rhs.y, self.z - rhs.z)
     }
 }
 
@@ -160,7 +160,7 @@ impl Mul<f64> for Vec3 {
     type Output = Vec3;
 
     fn mul(self, rhs: f64) -> Self::Output {
-        Vec3::new(self.x * rhs, self.y * rhs, self.z * rhs)
+        vec3(self.x * rhs, self.y * rhs, self.z * rhs)
     }
 }
 
@@ -202,17 +202,24 @@ impl Div<Vec3> for f64 {
 
 impl Distribution<Vec3> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec3 {
-        let x: f64 = rng.gen_range(-1.0..1.0);
-        let y: f64 = rng.gen_range(-1.0..1.0);
-        let z: f64 = rng.gen_range(-1.0..1.0);
+        let x: f64 = rng.gen();
+        let y: f64 = rng.gen();
+        let z: f64 = rng.gen();
         Vec3 { x, y, z }
     }
+}
+
+pub fn rand_in_cube<R: Rng>(rng: &mut R) -> Vec3 {
+    let x: f64 = rng.gen_range(-1.0..1.0);
+    let y: f64 = rng.gen_range(-1.0..1.0);
+    let z: f64 = rng.gen_range(-1.0..1.0);
+    Vec3 { x, y, z }
 }
 
 pub fn random_in_unit_sphere<R: Rng>(rng: &mut R) -> Vec3 {
     let mut p: Point3;
     loop {
-        p = rng.gen();
+        p = rand_in_cube(rng);
         if p.length2() >= 1.0 {
             continue;
         }
@@ -239,4 +246,17 @@ pub fn rand_color<R: Rng>(rng: &mut R, range: std::ops::Range<f64>) -> Color {
     let y: f64 = rng.gen_range(range.clone());
     let z: f64 = rng.gen_range(range);
     Color { x, y, z }
+}
+
+impl std::ops::Index<u8> for Vec3 {
+    type Output = f64;
+
+    fn index(&self, index: u8) -> &Self::Output {
+        match index {
+            0 => &self.x,
+            1 => &self.y,
+            2 => &self.z,
+            _ => panic!("Index out or range for Vec3")
+        }
+    }
 }
