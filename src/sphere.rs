@@ -1,3 +1,4 @@
+use crate::aabb::*;
 use crate::geom::*;
 use crate::material::Material;
 use crate::object::*;
@@ -49,6 +50,16 @@ impl Sphere {
     }
 }
 
+/* bool moving_sphere::bounding_box(double _time0, double _time1, aabb& output_box) const {
+    aabb box0(
+        center(_time0) - vec3(radius, radius, radius),
+        center(_time0) + vec3(radius, radius, radius));
+    aabb box1(
+        center(_time1) - vec3(radius, radius, radius),
+        center(_time1) + vec3(radius, radius, radius));
+    output_box = surrounding_box(box0, box1);
+    return true;
+} */
 impl Object for Sphere {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let oc = r.origin - self.center(r.time);
@@ -81,5 +92,18 @@ impl Object for Sphere {
         let outward_normal = (rec.p - self.center(r.time)) / self.radius;
         rec.set_face_normal(r, outward_normal);
         Some(rec)
+    }
+
+    fn bounding_box(&self, time_range: &Range<f64>) -> Option<crate::aabb::Aabb> {
+        let box0 = Aabb::new(
+            self.center(self.time_range.start) - vec3(self.radius, self.radius, self.radius),
+            self.center(time_range.start) + vec3(self.radius, self.radius, self.radius),
+        );
+        let box1 = Aabb::new(
+            self.center(self.time_range.end) - vec3(self.radius, self.radius, self.radius),
+            self.center(time_range.end) + vec3(self.radius, self.radius, self.radius),
+        );
+
+        Some(surrounding_box(box0, box1))
     }
 }

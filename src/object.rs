@@ -1,5 +1,7 @@
+use crate::aabb::*;
 use crate::geom::*;
 use crate::material::Material;
+use std::ops::Range;
 use std::sync::Arc;
 
 #[derive(Debug, Clone, Copy)]
@@ -11,7 +13,11 @@ pub struct Ray {
 
 impl Ray {
     pub fn new(origin: Point3, direction: Vec3, time: f64) -> Self {
-        Self { origin, direction, time }
+        Self {
+            origin,
+            direction,
+            time,
+        }
     }
 
     pub fn at(&self, t: f64) -> Point3 {
@@ -56,6 +62,7 @@ impl HitRecord {
 
 pub trait Object: Send + Sync {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
+    fn bounding_box(&self, time_range: &Range<f64>) -> Option<Aabb>;
 }
 
 pub struct Objects {
@@ -87,5 +94,17 @@ impl Object for Objects {
             }
         }
         rec
+    }
+
+    fn bounding_box(&self, time_range: &Range<f64>) -> Option<Aabb> {
+        let aabb = self.objects.iter().fold(Some(Aabb::EMPTY), |mut acc, o| {
+            if let Some(b) = o.bounding_box(time_range) {
+                acc = Some(surrounding_box(acc.unwrap(), b));
+            } else {
+                acc = None;
+            };
+            acc
+        });
+        aabb
     }
 }

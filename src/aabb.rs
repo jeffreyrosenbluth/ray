@@ -12,6 +12,19 @@ impl Aabb {
         Self { box_min, box_max }
     }
 
+    pub const EMPTY: Self = Aabb {
+        box_min: Vec3 {
+            x: f64::MAX,
+            y: f64::MAX,
+            z: f64::MAX,
+        },
+        box_max: Vec3 {
+            x: f64::MIN,
+            y: f64::MIN,
+            z: f64::MIN,
+        },
+    };
+
     pub fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> bool {
         for a in 0..3 {
             let inv_d = 1.0 / r.direction[a];
@@ -27,5 +40,24 @@ impl Aabb {
             }
         }
         true
+    }
+}
+
+pub fn surrounding_box(box0: Aabb, box1: Aabb) -> Aabb {
+    let small = point3(
+        box0.box_min.x.min(box1.box_min.x),
+        box0.box_min.y.min(box1.box_min.y),
+        box0.box_min.z.min(box1.box_min.z),
+    );
+
+    let large = point3(
+        box0.box_max.x.max(box1.box_max.x),
+        box0.box_max.y.max(box1.box_max.y),
+        box0.box_max.z.max(box1.box_max.z),
+    );
+
+    Aabb {
+        box_min: small,
+        box_max: large,
     }
 }
