@@ -4,6 +4,16 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssi
 
 pub const INFINITY: f64 = std::f64::MAX;
 pub const PI: f64 = std::f64::consts::PI;
+
+#[derive(Clone, Copy, Debug)]
+pub struct Vec3 {
+    pub x: f64,
+    pub y: f64,
+    pub z: f64,
+}
+
+pub type Point3 = Vec3;
+pub type Color = Vec3;
 pub const BLACK: Color = Color {
     x: 0.0,
     y: 0.0,
@@ -32,15 +42,6 @@ pub fn degrees_to_radians(degrees: f64) -> f64 {
     degrees * PI / 180.0
 }
 
-#[derive(Clone, Copy, Debug)]
-pub struct Vec3 {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
-}
-
-pub type Point3 = Vec3;
-pub type Color = Vec3;
 
 pub fn vec3(x: f64, y: f64, z: f64) -> Vec3 {
     Vec3::new(x, y, z)

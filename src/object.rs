@@ -30,6 +30,8 @@ pub struct HitRecord {
     pub normal: Vec3,
     pub material: Arc<dyn Material>,
     pub t: f64,
+    pub u: f64,
+    pub v: f64,
     pub front_face: bool,
 }
 
@@ -38,6 +40,8 @@ impl HitRecord {
         p: Point3,
         normal: Vec3,
         material: Arc<dyn Material>,
+        u: f64,
+        v: f64,
         t: f64,
         front_face: bool,
     ) -> Self {
@@ -46,6 +50,8 @@ impl HitRecord {
             normal,
             material,
             t,
+            u,
+            v,
             front_face,
         }
     }
@@ -66,7 +72,7 @@ pub trait Object: Send + Sync {
 }
 
 pub struct Objects {
-    objects: Vec<Box<dyn Object>>,
+    pub objects: Vec<Box<dyn Object>>,
 }
 
 impl Objects {

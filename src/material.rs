@@ -1,20 +1,42 @@
 use crate::geom::*;
 use crate::object::*;
+use crate::texture::*;
 use rand::prelude::*;
+use std::sync::Arc;
+
 pub trait Material: Send + Sync {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
 }
-pub struct Lambertian {
-    albedo: Color,
+pub struct Lambertian<T>
+where
+    T: Texture,
+{
+    albedo: Arc<T>,
 }
 
-impl Lambertian {
-    pub fn new(a: Color) -> Lambertian {
-        Lambertian { albedo: a }
+impl<T> Lambertian<T>
+where
+    T: Texture,
+{
+    pub fn new(t: T) -> Self {
+        Lambertian {
+            albedo: Arc::new(t),
+        }
     }
 }
 
-impl Material for Lambertian {
+impl Lambertian<Color> {
+    pub fn solid_color(c: Color) -> Self {
+        Lambertian {
+            albedo: Arc::new(c),
+        }
+    }
+}
+
+impl<T> Material for Lambertian<T>
+where
+    T: Texture,
+{
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
         let mut rng = thread_rng();
         let mut scatter_direction = rec.normal + random_unit_vector(&mut rng);
@@ -23,7 +45,7 @@ impl Material for Lambertian {
             scatter_direction = rec.normal;
         }
         let scattered = Ray::new(rec.p, scatter_direction, r_in.time);
-        Some((self.albedo, scattered))
+        Some((self.albedo.value(rec.u, rec.v, rec.p), scattered))
     }
 }
 pub struct Metal {

@@ -2,6 +2,7 @@ use crate::aabb::*;
 use crate::geom::*;
 use crate::material::Material;
 use crate::object::*;
+use std::f64::consts::PI;
 use std::ops::Range;
 use std::sync::Arc;
 
@@ -50,16 +51,13 @@ impl Sphere {
     }
 }
 
-/* bool moving_sphere::bounding_box(double _time0, double _time1, aabb& output_box) const {
-    aabb box0(
-        center(_time0) - vec3(radius, radius, radius),
-        center(_time0) + vec3(radius, radius, radius));
-    aabb box1(
-        center(_time1) - vec3(radius, radius, radius),
-        center(_time1) + vec3(radius, radius, radius));
-    output_box = surrounding_box(box0, box1);
-    return true;
-} */
+/// Returns (u, v)
+pub fn sphere_uv(p: Point3) -> (f64, f64) {
+    let theta = (-p.y).acos();
+    let phi = (-p.z).atan2(p.x) + PI;
+    (phi / (2.0 * PI), theta / PI)
+}
+
 impl Object for Sphere {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let oc = r.origin - self.center(r.time);
@@ -82,14 +80,17 @@ impl Object for Sphere {
             };
         }
         let p = r.at(root);
+        let outward_normal = (p - self.center(r.time)) / self.radius;
+        let (u, v) = sphere_uv(p);
         let mut rec = HitRecord {
             t: root,
+            u,
+            v,
             p,
             material: self.material.clone(),
             normal: ZERO,
             front_face: true,
         };
-        let outward_normal = (rec.p - self.center(r.time)) / self.radius;
         rec.set_face_normal(r, outward_normal);
         Some(rec)
     }

@@ -1,10 +1,12 @@
 use png::*;
 use rand::prelude::*;
+use ray::bvh::*;
 use ray::camera::*;
 use ray::geom::*;
 use ray::material::*;
 use ray::object::*;
 use ray::sphere::*;
+use ray::texture::CheckeredTexture;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::BufWriter;
@@ -46,7 +48,7 @@ fn write_png(data: &[u8], width: u32, height: u32, name: &'static str) {
     writer.write_image_data(data).unwrap();
 }
 
-fn ray_color(r: &Ray, world: &Objects, depth: u32) -> Color {
+fn ray_color(r: &Ray, world: &impl Object, depth: u32) -> Color {
     if depth == 0 {
         return BLACK;
     }
@@ -66,10 +68,10 @@ fn ray_color(r: &Ray, world: &Objects, depth: u32) -> Color {
 #[allow(dead_code)]
 fn glass_scene() -> Objects {
     let mut world = Objects::new(Vec::new());
-    let mat_ground = Arc::new(Lambertian::new(Color::new(0.8, 0.8, 0.0)));
+    let mat_ground = Arc::new(Lambertian::solid_color(Color::new(0.8, 0.8, 0.0)));
     let mat_center = Arc::new(Dielectric::new(1.5));
     let mat_left = Arc::new(Dielectric::new(1.5));
-    let mat_right = Arc::new(Lambertian::new(Color::new(0.8, 0.6, 0.2)));
+    let mat_right = Arc::new(Lambertian::solid_color(Color::new(0.8, 0.6, 0.2)));
 
     world.add(Box::new(Sphere::new(
         point3(0.0, -100.5, -1.0),
@@ -96,12 +98,16 @@ fn glass_scene() -> Objects {
 }
 
 #[allow(dead_code)]
-fn random_scene() -> Objects {
+fn random_scene() -> impl Object {
     let mut rng = rand::thread_rng();
     let mut world = Objects::new(Vec::new());
 
-    let ground_mat = Arc::new(Lambertian::new(Color::new(0.5, 0.5, 0.5)));
-    let ground_sphere = Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, ground_mat);
+    let ground_mat = Arc::new(Lambertian::solid_color(Color::new(0.5, 0.5, 0.5)));
+    let checker = Arc::new(Lambertian::new(CheckeredTexture::with_color(
+        vec3(0.2, 0.3, 0.1),
+        vec3(0.9, 0.9, 0.9),
+    )));
+    let ground_sphere = Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, checker);
 
     world.add(Box::new(ground_sphere));
 
@@ -121,9 +127,9 @@ fn random_scene() -> Objects {
             if choose_mat < 0.85 {
                 // Diffuse
                 let albedo = rand_color(&mut rng, 0.0..1.0) * rand_color(&mut rng, 0.0..1.0);
-                let sphere_mat = Arc::new(Lambertian::new(albedo));
+                let sphere_mat = Arc::new(Lambertian::solid_color(albedo));
                 let center2 = center + vec3(0.0, rng.gen_range(0.0..0.5), 0.0);
-                let sphere = Sphere::new_moving(center, center2, 0.2, sphere_mat, 0.0..1.0);
+                let sphere = Sphere::new(center, 0.2, sphere_mat);
 
                 world.add(Box::new(sphere));
             } else if choose_mat < 0.95 {
@@ -145,7 +151,7 @@ fn random_scene() -> Objects {
     }
 
     let mat1 = Arc::new(Dielectric::new(1.5));
-    let mat2 = Arc::new(Lambertian::new(Color::new(0.4, 0.2, 0.1)));
+    let mat2 = Arc::new(Lambertian::solid_color(Color::new(0.4, 0.2, 0.1)));
     let mat3 = Arc::new(Metal::new(Color::new(0.7, 0.6, 0.5), 0.0));
 
     let sphere1 = Sphere::new(Point3::new(0.0, 1.0, 0.0), 1.0, mat1);
@@ -156,12 +162,13 @@ fn random_scene() -> Objects {
     world.add(Box::new(sphere2));
     world.add(Box::new(sphere3));
 
-    world
+    let n = world.objects.len();
+    BvhNode::new(&mut world, 0, n, 0.0..1.0)
 }
 fn main() {
     // Image
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
-    const IMAGE_WIDTH: u32 = 400;
+    const IMAGE_WIDTH: u32 = 800;
     const IMAGE_HEIGHT: u32 = ((IMAGE_WIDTH as f64) / ASPECT_RATIO) as u32;
     const SAMPLES_PER_PIXEL: u32 = 100;
     const MAX_DEPTH: u32 = 50;
