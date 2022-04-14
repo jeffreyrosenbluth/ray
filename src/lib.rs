@@ -4,5 +4,6 @@ pub mod camera;
 pub mod geom;
 pub mod material;
 pub mod object;
+pub mod scenes;
 pub mod sphere;
 pub mod texture;

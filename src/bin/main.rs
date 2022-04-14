@@ -1,17 +1,13 @@
 use png::*;
 use rand::prelude::*;
-use ray::bvh::*;
 use ray::camera::*;
 use ray::geom::*;
-use ray::material::*;
 use ray::object::*;
-use ray::sphere::*;
-use ray::texture::CheckeredTexture;
+use ray:: scenes::*;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::BufWriter;
 use std::path::PathBuf;
-use std::sync::Arc;
 
 fn write_color(data: &mut Vec<u8>, pixel_color: Color, samples_per_pixel: u32) {
     let mut r = pixel_color.x;
@@ -65,106 +61,8 @@ fn ray_color(r: &Ray, world: &impl Object, depth: u32) -> Color {
     }
 }
 
-#[allow(dead_code)]
-fn glass_scene() -> Objects {
-    let mut world = Objects::new(Vec::new());
-    let mat_ground = Arc::new(Lambertian::solid_color(Color::new(0.8, 0.8, 0.0)));
-    let mat_center = Arc::new(Dielectric::new(1.5));
-    let mat_left = Arc::new(Dielectric::new(1.5));
-    let mat_right = Arc::new(Lambertian::solid_color(Color::new(0.8, 0.6, 0.2)));
 
-    world.add(Box::new(Sphere::new(
-        point3(0.0, -100.5, -1.0),
-        100.0,
-        mat_ground,
-    )));
-    world.add(Box::new(Sphere::new(
-        point3(0.0, 0.0, -1.0),
-        0.5,
-        mat_center,
-    )));
-    world.add(Box::new(Sphere::new(
-        point3(-1.0, 0.0, -1.0),
-        0.5,
-        mat_left,
-    )));
-    world.add(Box::new(Sphere::new(
-        point3(1.0, 0.0, -1.0),
-        0.5,
-        mat_right,
-    )));
 
-    world
-}
-
-#[allow(dead_code)]
-fn random_scene() -> impl Object {
-    let mut rng = rand::thread_rng();
-    let mut world = Objects::new(Vec::new());
-
-    let ground_mat = Arc::new(Lambertian::solid_color(Color::new(0.5, 0.5, 0.5)));
-    let checker = Arc::new(Lambertian::new(CheckeredTexture::with_color(
-        vec3(0.2, 0.3, 0.1),
-        vec3(0.9, 0.9, 0.9),
-    )));
-    let ground_sphere = Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, checker);
-
-    world.add(Box::new(ground_sphere));
-
-    for a in -11..=11 {
-        for b in -11..=11 {
-            // don't put a marble on top of large metal sphere
-            if a == 4 && b == 0 {
-                continue;
-            };
-            let choose_mat: f64 = rng.gen();
-            let center = Point3::new(
-                (a as f64) + rng.gen_range(0.0..0.9),
-                0.2,
-                (b as f64) + rng.gen_range(0.0..0.9),
-            );
-
-            if choose_mat < 0.85 {
-                // Diffuse
-                let albedo = rand_color(&mut rng, 0.0..1.0) * rand_color(&mut rng, 0.0..1.0);
-                let sphere_mat = Arc::new(Lambertian::solid_color(albedo));
-                let center2 = center + vec3(0.0, rng.gen_range(0.0..0.5), 0.0);
-                let sphere = Sphere::new(center, 0.2, sphere_mat);
-
-                world.add(Box::new(sphere));
-            } else if choose_mat < 0.95 {
-                // Metal
-                let albedo = rand_color(&mut rng, 0.4..1.0);
-                let fuzz = rng.gen_range(0.0..0.5);
-                let sphere_mat = Arc::new(Metal::new(albedo, fuzz));
-                let sphere = Sphere::new(center, 0.2, sphere_mat);
-
-                world.add(Box::new(sphere));
-            } else {
-                // Glass
-                let sphere_mat = Arc::new(Dielectric::new(1.5));
-                let sphere = Sphere::new(center, 0.2, sphere_mat);
-
-                world.add(Box::new(sphere));
-            }
-        }
-    }
-
-    let mat1 = Arc::new(Dielectric::new(1.5));
-    let mat2 = Arc::new(Lambertian::solid_color(Color::new(0.4, 0.2, 0.1)));
-    let mat3 = Arc::new(Metal::new(Color::new(0.7, 0.6, 0.5), 0.0));
-
-    let sphere1 = Sphere::new(Point3::new(0.0, 1.0, 0.0), 1.0, mat1);
-    let sphere2 = Sphere::new(Point3::new(-4.0, 1.0, 0.0), 1.0, mat2);
-    let sphere3 = Sphere::new(Point3::new(4.0, 1.0, 0.0), 1.0, mat3);
-
-    world.add(Box::new(sphere1));
-    world.add(Box::new(sphere2));
-    world.add(Box::new(sphere3));
-
-    let n = world.objects.len();
-    BvhNode::new(&mut world, 0, n, 0.0..1.0)
-}
 fn main() {
     // Image
     const ASPECT_RATIO: f64 = 16.0 / 9.0;
