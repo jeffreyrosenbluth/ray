@@ -81,14 +81,14 @@ impl Object for Sphere {
         }
         let p = r.at(root);
         let outward_normal = (p - self.center(r.time)) / self.radius;
-        let (u, v) = sphere_uv(p);
+        let (u, v) = sphere_uv(outward_normal);
         let mut rec = HitRecord {
+            p,
+            normal: ZERO,
+            material: self.material.clone(),
             t: root,
             u,
             v,
-            p,
-            material: self.material.clone(),
-            normal: ZERO,
             front_face: true,
         };
         rec.set_face_normal(r, outward_normal);

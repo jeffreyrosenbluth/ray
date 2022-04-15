@@ -72,7 +72,7 @@ fn main() {
     const MAX_DEPTH: u32 = 50;
 
     // World
-    let world = random_scene();
+    let world = earth();
 
     // Camera
     let cam = Camera::new(
