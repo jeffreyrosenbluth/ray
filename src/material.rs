@@ -6,10 +6,11 @@ use std::sync::Arc;
 
 pub trait Material: Send + Sync {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
+    fn color_emitted(&self, _u: f64, _v: f64, _p: Point3) -> Color {
+        BLACK
+    }
 }
 pub struct Lambertian<T>
-where
-    T: Texture,
 {
     albedo: Arc<T>,
 }
@@ -114,5 +115,29 @@ impl Material for Dielectric {
             };
         let scattered = Ray::new(hit.p, direction, r_in.time);
         Some((attenuation, scattered))
+    }
+}
+
+pub struct DiffuseLight<T>
+{
+    pub color: Arc<T>,
+}
+
+impl<T> DiffuseLight<T>
+where
+    T: Texture,
+{
+    pub fn new(c: T) -> Self {
+        DiffuseLight { color: Arc::new(c) }
+    }
+}
+
+impl<T> Material for DiffuseLight<T> where T: Texture {
+    fn scatter(&self, _r_in: &Ray, _rec: &HitRecord) -> Option<(Color, Ray)> {
+        None
+    }
+
+    fn color_emitted(&self, u: f64, v: f64, p: Point3) -> Color {
+        self.color.value(u, v, p)
     }
 }

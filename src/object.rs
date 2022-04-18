@@ -114,3 +114,116 @@ impl Object for Objects {
         aabb
     }
 }
+
+pub struct Translate<T> {
+    pub object: T,
+    pub offset: Vec3,
+}
+
+impl<T> Translate<T> {
+    pub fn new(object: T, offset: Vec3) -> Self {
+        Self { object, offset }
+    }
+}
+
+impl<T> Object for Translate<T>
+where
+    T: Object,
+{
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let moved_r = Ray::new(r.origin - self.offset, r.direction, r.time);
+        if let Some(mut rec) = self.object.hit(&moved_r, t_min, t_max) {
+            rec.p += self.offset;
+            rec.set_face_normal(&moved_r, rec.normal);
+            Some(rec)
+        } else {
+            None
+        }
+    }
+
+    fn bounding_box(&self, time_range: &Range<f64>) -> Option<Aabb> {
+        if let Some(bbox) = self.object.bounding_box(time_range) {
+            Some(Aabb::new(
+                bbox.box_min + self.offset,
+                bbox.box_max + self.offset,
+            ))
+        } else {
+            None
+        }
+    }
+}
+
+pub struct RotateY<T> {
+    pub object: T,
+    pub sin: f64,
+    pub cos: f64,
+    pub bbox: Option<Aabb>,
+}
+
+impl<T> RotateY<T>
+where
+    T: Object,
+{
+    pub fn new(object: T, degrees: f64) -> Self {
+        let theta = degrees * PI / 180.0;
+        let sin = theta.sin();
+        let cos = theta.cos();
+        let mut rect = Aabb::EMPTY;
+        let bbox = object.bounding_box(&(0.0..1.0)).map(|b| {
+            for i in 0..2 {
+                for j in 0..2 {
+                    for k in 0..2 {
+                        let x = i as f64 * b.box_max.x + (1.0 - i as f64) * b.box_min.x;
+                        let y = j as f64 * b.box_max.y + (1.0 - j as f64) * b.box_min.y;
+                        let z = k as f64 * b.box_max.z + (1.0 - k as f64) * b.box_min.z;
+                        let newx = cos * x + sin * z;
+                        let newz = -sin * x + cos * z;
+                        let tester = vec3(newx, y, newz);
+                        for c in 0..3 {
+                            rect.box_min[c] = rect.box_min[c].min(tester[c]);
+                            rect.box_max[c] = rect.box_max[c].min(tester[c]);
+                        }
+                    }
+                }
+            }
+            rect
+        });
+        Self {
+            object,
+            sin,
+            cos,
+            bbox,
+        }
+    }
+}
+
+impl<T> Object for RotateY<T>
+where
+    T: Object,
+{
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        let mut origin = r.origin;
+        let mut direction = r.direction;
+        origin[0] = self.cos * r.origin[0] - self.sin * r.origin[2];
+        origin[2] = self.sin * r.origin[0] + self.cos * r.origin[2];
+        direction[0] = self.cos * r.direction[0] - self.sin * r.direction[2];
+        direction[2] = self.sin * r.direction[0] + self.cos * r.direction[2];
+        let rotated_r = Ray::new(origin, direction, r.time);
+        let hr = self.object.hit(&rotated_r, t_min, t_max).map(|mut rec| {
+            let mut p = rec.p;
+            let mut normal = rec.normal;
+            p[0] = self.cos * rec.p[0] + self.sin * rec.p[2];
+            p[2] = -self.sin * rec.p[0] + self.cos * rec.p[2];
+            normal[0] = self.cos * rec.normal[0] + self.sin * rec.normal[2];
+            normal[2] = -self.sin * rec.normal[0] + self.cos * rec.normal[2];
+            rec.p = p;
+            rec.set_face_normal(&rotated_r, normal);
+            rec
+        });
+        hr
+    }
+
+    fn bounding_box(&self, _time_range: &Range<f64>) -> Option<Aabb> {
+        self.bbox
+    }
+}

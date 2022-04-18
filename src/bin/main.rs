@@ -44,20 +44,19 @@ fn write_png(data: &[u8], width: u32, height: u32, name: &'static str) {
     writer.write_image_data(data).unwrap();
 }
 
-fn ray_color(r: &Ray, world: &impl Object, depth: u32) -> Color {
+fn ray_color(r: &Ray, background: Color, world: &impl Object, depth: u32) -> Color {
     if depth == 0 {
         return BLACK;
     }
     if let Some(rec) = world.hit(r, 0.001, INFINITY) {
+        let emitted = rec.material.color_emitted(rec.u, rec.v, rec.p);
         if let Some((attenuation, scattered)) = rec.material.scatter(r, &rec) {
-            attenuation * ray_color(&scattered, world, depth - 1)
+            emitted + attenuation * ray_color(&scattered, background, world, depth - 1)
         } else {
-            BLACK
+            emitted
         }
     } else {
-        let unit_direction = r.direction.normalize();
-        let t = 0.5 * (unit_direction.y + 1.0);
-        (1.0 - t) * WHITE + t * Color::new(0.5, 0.7, 1.0)
+        background
     }
 }
 
@@ -65,26 +64,28 @@ fn ray_color(r: &Ray, world: &impl Object, depth: u32) -> Color {
 
 fn main() {
     // Image
-    const ASPECT_RATIO: f64 = 16.0 / 9.0;
-    const IMAGE_WIDTH: u32 = 800;
+    const ASPECT_RATIO: f64 = 1.0;
+    const IMAGE_WIDTH: u32 = 600;
     const IMAGE_HEIGHT: u32 = ((IMAGE_WIDTH as f64) / ASPECT_RATIO) as u32;
-    const SAMPLES_PER_PIXEL: u32 = 100;
+    const SAMPLES_PER_PIXEL: u32 = 200;
     const MAX_DEPTH: u32 = 50;
 
     // World
-    let world = earth();
+    let world = cornell_box();
 
     // Camera
     let cam = Camera::new(
-        point3(13.0, 2.0, 3.0),
-        ZERO,
+        point3(278.0, 278.0, -800.0),
+        point3(278.0, 278.0, 0.0),
         vec3(0.0, 1.0, 0.0),
-        20.0,
+        40.0,
         ASPECT_RATIO,
         0.1,
         10.0,
         0.0..1.0,
     );
+
+    let bg = vec3(0.0, 0.0, 0.0);
 
     let mut data: Vec<u8> = Vec::new();
     let w = IMAGE_WIDTH;
@@ -106,7 +107,7 @@ fn main() {
                     let v = ((j as f64) + random_v) / ((IMAGE_HEIGHT - 1) as f64);
 
                     let r = cam.get_ray(u, v);
-                    pixel_color += ray_color(&r, &world, MAX_DEPTH);
+                    pixel_color += ray_color(&r, bg, &world, MAX_DEPTH);
                 }
                 pixel_color
             })

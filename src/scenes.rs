@@ -4,6 +4,7 @@ use crate::material::*;
 use crate::object::*;
 use crate::sphere::*;
 use crate::texture::*;
+use crate::xy_rect::*;
 use rand::prelude::*;
 use std::sync::Arc;
 
@@ -38,13 +39,73 @@ pub fn glass_scene() -> impl Object {
     world
 }
 
+pub fn simple_light() -> impl Object {
+    let perlin = Arc::new(Lambertian::new(PerlinTexture::new(2.0)));
+    let mut objects = Objects::new(Vec::new());
+    objects.add(Box::new(Sphere::new(
+        point3(0.0, -1000.0, 0.0),
+        1000.0,
+        perlin.clone(),
+    )));
+    objects.add(Box::new(Sphere::new(
+        point3(0.0, 2.0, 0.0),
+        2.0,
+        perlin.clone(),
+    )));
+    let difflight = Arc::new(DiffuseLight::new(point3(4.0, 4.0, 4.0)));
+    let difflight2 = Arc::new(DiffuseLight::new(point3(8.0, 8.0, 8.0)));
+    objects.add(Box::new(XYrect::new(3.0, 1.0, 5.0, 3.0, -2.0, difflight)));
+    objects.add(Box::new(Sphere::new(point3(0.0, 7.0, 0.0), 1.5, difflight2)));
+    objects
+}
+
+/*shared_ptr<hittable> box1 = make_shared<box>(point3(0, 0, 0), point3(165, 330, 165), white);
+box1 = make_shared<rotate_y>(box1, 15);
+box1 = make_shared<translate>(box1, vec3(265,0,295));
+objects.add(box1);
+
+shared_ptr<hittable> box2 = make_shared<box>(point3(0,0,0), point3(165,165,165), white);
+box2 = make_shared<rotate_y>(box2, -18);
+box2 = make_shared<translate>(box2, vec3(130,0,65));
+objects.add(box2); */
+pub fn cornell_box() -> impl Object {
+    let mut objects = Objects::new(Vec::new());
+    let red = Arc::new(Lambertian::new(point3(0.65, 0.05, 0.05)));
+    let white = Arc::new(Lambertian::new(point3(0.73, 0.73, 0.73)));
+    let green = Arc::new(Lambertian::new(point3(0.12, 0.45, 0.15)));
+    let light = Arc::new(DiffuseLight::new(point3(15.0, 15.0, 15.0)));
+    objects.add(Box::new(YZrect::new(0.0, 0.0, 555.0, 555.0, 555.0, green)));
+    objects.add(Box::new(YZrect::new(0.0, 0.0, 555.0, 555.0, 0.0, red)));
+    objects.add(Box::new(XZrect::new(213.0, 227.0, 343.0, 332.0, 554.0, light)));
+    objects.add(Box::new(XZrect::new(0.0, 0.0, 555.0, 555.0, 0.0, white.clone())));
+    objects.add(Box::new(XZrect::new(0.0, 0.0, 555.0, 555.0, 555.0, white.clone())));
+    objects.add(Box::new(XYrect::new(0.0, 0.0, 555.0, 555.0, 555.0, white.clone())));
+    let box1 = Cuboid::new(ZERO, point3(165.0, 330.0, 165.0),white.clone());
+    let box1 = RotateY::new(box1, 15.0);
+    let box1 = Translate::new(box1, vec3(250.0, 0.0, 295.0));
+    objects.add(Box::new(box1));
+    let box2 = Cuboid::new(ZERO, point3(165.0, 165.0, 165.0),white.clone());
+    let box2 = RotateY::new(box2, -18.0);
+    let box2 = Translate::new(box2, vec3(130.0, 0.0, 65.0));
+    objects.add(Box::new(box2));
+    objects
+
+}
+
 pub fn two_perlin_spheres() -> impl Object {
     let perlin = Arc::new(Lambertian::new(PerlinTexture::new(2.0)));
     let mut objects = Objects::new(Vec::new());
-    objects.add(Box::new(Sphere::new(point3(0.0, -1000.0, 0.0), 1000.0, perlin.clone())));
-    objects.add(Box::new(Sphere::new(point3(0.0, 2.0, 0.0), 2.0, perlin.clone())));
+    objects.add(Box::new(Sphere::new(
+        point3(0.0, -1000.0, 0.0),
+        1000.0,
+        perlin.clone(),
+    )));
+    objects.add(Box::new(Sphere::new(
+        point3(0.0, 2.0, 0.0),
+        2.0,
+        perlin.clone(),
+    )));
     objects
-
 }
 
 pub fn earth() -> impl Object {
@@ -58,8 +119,16 @@ pub fn two_spheres() -> impl Object {
     let odd = vec3(0.9, 0.9, 0.9);
     let checker = Arc::new(Lambertian::new(CheckeredTexture::with_color(even, odd)));
     let mut objects = Objects::new(Vec::new());
-    objects.add(Box::new(Sphere::new(point3(0.0, -10.0, 0.0), 10.0, checker.clone())));
-    objects.add(Box::new(Sphere::new(point3(0.0, 10.0, 0.0), 10.0, checker.clone())));
+    objects.add(Box::new(Sphere::new(
+        point3(0.0, -10.0, 0.0),
+        10.0,
+        checker.clone(),
+    )));
+    objects.add(Box::new(Sphere::new(
+        point3(0.0, 10.0, 0.0),
+        10.0,
+        checker.clone(),
+    )));
     objects
 }
 

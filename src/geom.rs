@@ -42,7 +42,6 @@ pub fn degrees_to_radians(degrees: f64) -> f64 {
     degrees * PI / 180.0
 }
 
-
 pub fn vec3(x: f64, y: f64, z: f64) -> Vec3 {
     Vec3::new(x, y, z)
 }
@@ -257,7 +256,18 @@ impl std::ops::Index<u8> for Vec3 {
             0 => &self.x,
             1 => &self.y,
             2 => &self.z,
-            _ => panic!("Index out or range for Vec3")
+            _ => panic!("Index out or range for Vec3"),
+        }
+    }
+}
+
+impl std::ops::IndexMut<u8> for Vec3 {
+    fn index_mut(&mut self, index: u8) -> &mut Self::Output {
+        match index {
+            0 => &mut self.x,
+            1 => &mut self.y,
+            2 => &mut self.z,
+            _ => panic!("Index out or range for Vec3"),
         }
     }
 }
