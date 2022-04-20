@@ -33,6 +33,10 @@ impl Lambertian<Color> {
     }
 }
 
+pub fn lambertian(r: f64, g: f64, b: f64) -> Arc<Lambertian<Color>> {
+    Arc::new(Lambertian::solid_color(color(r, g, b)))
+}
+
 impl<T> Material for Lambertian<T>
 where
     T: Texture,
@@ -76,6 +80,10 @@ impl Material for Metal {
     }
 }
 
+pub fn metal(r: f64, g: f64, b: f64, fuzz: f64) -> Arc<Metal> {
+    Arc::new(Metal::new(color(r, g, b), fuzz))
+}
+
 pub struct Dielectric {
     ir: f64,
 }
@@ -117,6 +125,10 @@ impl Material for Dielectric {
     }
 }
 
+pub fn dielectric(index_of_refraction: f64) -> Arc<Dielectric> {
+    Arc::new(Dielectric::new(index_of_refraction))
+}
+
 pub struct DiffuseLight<T> {
     pub color: Arc<T>,
 }
@@ -143,13 +155,17 @@ where
     }
 }
 
+pub fn diffuse_light(r: f64, g: f64, b: f64) -> Arc<DiffuseLight<Color>> {
+    Arc::new(DiffuseLight::new(color(r, g, b)))
+}
+
+
 #[derive(Clone)]
 pub struct Isotropic<T> {
     albedo: T,
 }
 
 impl<T> Isotropic<T> {
-
     pub fn new(albedo: T) -> Self {
         Self { albedo }
     }
@@ -167,11 +183,6 @@ where
     }
 }
 
-// impl<T> Material for Arc<Isotropic<T>> where T: Texture {
-//     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
-//         let mut rng = thread_rng();
-//         let scattered = Ray::new(rec.p, random_in_unit_sphere(&mut rng), r_in.time);
-//         let attenuation = self.albedo.value(rec.u, rec.v, rec.p);
-//         Some((attenuation, scattered))
-//     }
-// }
+pub fn isotropic(r: f64, g: f64, b: f64) -> Arc<Isotropic<Color>> {
+    Arc::new(Isotropic::new(color(r, g, b)))
+}

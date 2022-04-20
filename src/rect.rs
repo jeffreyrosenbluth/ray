@@ -93,7 +93,7 @@ pub struct Cuboid {
 impl Cuboid {
     pub fn new(box_min: Point3, box_max: Point3, material: Arc<dyn Material>) -> Self {
         let mut sides = Objects::new(Vec::new());
-        sides.add(Box::new(Rect::new(
+        sides.add(Rect::new(
             Axis::Z,
             box_min.x,
             box_min.y,
@@ -101,8 +101,8 @@ impl Cuboid {
             box_max.y,
             box_max.z,
             material.clone(),
-        )));
-        sides.add(Box::new(Rect::new(
+        ));
+        sides.add(Rect::new(
             Axis::Z,
             box_min.x,
             box_min.y,
@@ -110,9 +110,8 @@ impl Cuboid {
             box_max.y,
             box_min.z,
             material.clone(),
-        )));
-
-        sides.add(Box::new(Rect::new(
+        ));
+        sides.add(Rect::new(
             Axis::Y,
             box_min.x,
             box_min.z,
@@ -120,8 +119,8 @@ impl Cuboid {
             box_max.z,
             box_max.y,
             material.clone(),
-        )));
-        sides.add(Box::new(Rect::new(
+        ));
+        sides.add(Rect::new(
             Axis::Y,
             box_min.x,
             box_min.z,
@@ -129,9 +128,9 @@ impl Cuboid {
             box_max.z,
             box_min.y,
             material.clone(),
-        )));
+        ));
 
-        sides.add(Box::new(Rect::new(
+        sides.add(Rect::new(
             Axis::X,
             box_min.y,
             box_min.z,
@@ -139,8 +138,8 @@ impl Cuboid {
             box_max.z,
             box_max.x,
             material.clone(),
-        )));
-        sides.add(Box::new(Rect::new(
+        ));
+        sides.add(Rect::new(
             Axis::X,
             box_min.y,
             box_min.z,
@@ -148,7 +147,7 @@ impl Cuboid {
             box_max.z,
             box_min.x,
             material.clone(),
-        )));
+        ));
         Self {
             box_min,
             box_max,

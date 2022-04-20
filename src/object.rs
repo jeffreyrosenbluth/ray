@@ -3,7 +3,6 @@ use rand::prelude::*;
 use crate::aabb::*;
 use crate::geom::*;
 use crate::material::*;
-use crate::texture::*;
 use std::ops::Range;
 use std::sync::Arc;
 
@@ -43,9 +42,9 @@ impl HitRecord {
         p: Point3,
         normal: Vec3,
         material: Arc<dyn Material>,
+        t: f64,
         u: f64,
         v: f64,
-        t: f64,
         front_face: bool,
     ) -> Self {
         Self {
@@ -87,8 +86,8 @@ impl Objects {
         self.objects.clear()
     }
 
-    pub fn add(&mut self, object: Box<dyn Object>) {
-        self.objects.push(object);
+    pub fn add(&mut self, object: impl Object + 'static) {
+        self.objects.push(Box::new(object));
     }
 }
 
@@ -316,11 +315,11 @@ pub struct ConstantMedium<O> {
 }
 
 impl<O> ConstantMedium<O> {
-    pub fn new(boundary: O, color: Color, neg_inv_density: f64) -> Self {
+    pub fn new(boundary: O, color: Color, d: f64) -> Self {
         Self {
             boundary,
             phase_function: Isotropic::new(color),
-            neg_inv_density,
+            neg_inv_density: -1.0 / d,
         }
     }
 }
@@ -331,11 +330,11 @@ where
 {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let mut rng = thread_rng();
-        let mut rec1 = self.boundary.hit(r, -f64::MAX, f64::MAX)?;
+        let mut rec1 = self.boundary.hit(r, f64::MIN, f64::MAX)?;
         let mut rec2 = self.boundary.hit(r, rec1.t + 0.0001, f64::MAX)?;
         rec1.t = rec1.t.max(t_min);
-        rec2.t = rec1.t.min(t_max);
-        if rec1.t < rec2.t {
+        rec2.t = rec2.t.min(t_max);
+        if rec1.t >= rec2.t {
             return None;
         }
         rec1.t = rec1.t.max(0.0);
@@ -345,14 +344,14 @@ where
         if hit_distance > distance_inside_boundary {
             return None;
         }
-        let t = rec1.t * hit_distance / ray_length;
+        let t = rec1.t + hit_distance / ray_length;
         Some(HitRecord::new(
             r.at(t),
             vec3(1.0, 0.0, 0.0), // arbitrary
             Arc::new(self.phase_function.clone()),
-            0.0,
-            0.0,
             t,
+            1.0,
+            1.0,
             true, // arbitrary
         ))
     }

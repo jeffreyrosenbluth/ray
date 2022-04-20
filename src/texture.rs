@@ -112,9 +112,3 @@ impl Texture for ImageTexture {
         color(r, g, b)
     }
 }
-
-impl<T> Texture for Arc<T> where T: Texture {
-    fn value(&self, u: f64, v: f64, p: Point3) -> Color {
-        self.value(u, v, p)
-    }
-}

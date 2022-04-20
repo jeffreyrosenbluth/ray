@@ -94,25 +94,13 @@ fn ray_color(r: &Ray, background: Color, world: &impl Object, depth: u32) -> Col
 fn main() {
     // Image
     const ASPECT_RATIO: f64 = 1.0;
-    const IMAGE_WIDTH: u32 = 600;
+    const IMAGE_WIDTH: u32 = 800;
     const IMAGE_HEIGHT: u32 = ((IMAGE_WIDTH as f64) / ASPECT_RATIO) as u32;
-    const SAMPLES_PER_PIXEL: u32 = 200;
+    const SAMPLES_PER_PIXEL: u32 = 250;
     const MAX_DEPTH: u32 = 50;
 
-    // World
-    let world = cornell_box();
+    let (world, cam) = final_scene();
 
-    // Camera
-    let cam = Camera::new(
-        point3(278.0, 278.0, -800.0),
-        point3(278.0, 278.0, 0.0),
-        vec3(0.0, 1.0, 0.0),
-        40.0,
-        ASPECT_RATIO,
-        0.0,
-        10.0,
-        0.0..1.0,
-    );
 
     let bg = vec3(0.0, 0.0, 0.0);
 

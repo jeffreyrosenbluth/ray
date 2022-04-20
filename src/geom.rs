@@ -252,6 +252,13 @@ pub fn rand_color<R: Rng>(rng: &mut R, range: std::ops::Range<f64>) -> Color {
     Color { x, y, z }
 }
 
+pub fn rand_point<R: Rng>(rng: &mut R, range: std::ops::Range<f64>) -> Color {
+    let x: f64 = rng.gen_range(range.clone());
+    let y: f64 = rng.gen_range(range.clone());
+    let z: f64 = rng.gen_range(range);
+    Point3 { x, y, z }
+}
+
 impl std::ops::Index<u8> for Vec3 {
     type Output = f64;
 
