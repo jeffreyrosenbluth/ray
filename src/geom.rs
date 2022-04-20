@@ -50,6 +50,10 @@ pub fn point3(x: f64, y: f64, z: f64) -> Point3 {
     Point3::new(x, y, z)
 }
 
+pub fn color(r: f64, g: f64, b: f64) -> Color {
+    point3(r, g, b)
+}
+
 impl Vec3 {
     pub fn new(x: f64, y: f64, z: f64) -> Self {
         Self { x, y, z }
@@ -267,6 +271,47 @@ impl std::ops::IndexMut<u8> for Vec3 {
             0 => &mut self.x,
             1 => &mut self.y,
             2 => &mut self.z,
+            _ => panic!("Index out or range for Vec3"),
+        }
+    }
+}
+
+#[derive(Debug, Clone, Copy, PartialEq, Eq)]
+pub enum Axis {
+    X,
+    Y,
+    Z,
+}
+
+impl Axis {
+    pub const fn order(self) -> (Axis, Axis, Axis) {
+        match self {
+            Axis::X => (Axis::Y, Axis::Z, Axis::X),
+            Axis::Y => (Axis::X, Axis::Z, Axis::Y),
+            Axis::Z => (Axis::X, Axis::Y, Axis::Z),
+        }
+    }
+}
+
+impl std::ops::Index<Axis> for Vec3 {
+    type Output = f64;
+
+    fn index(&self, index: Axis) -> &Self::Output {
+        match index {
+            Axis::X => &self.x,
+            Axis::Y => &self.y,
+            Axis::Z => &self.z,
+            _ => panic!("Index out or range for Vec3"),
+        }
+    }
+}
+
+impl std::ops::IndexMut<Axis> for Vec3 {
+    fn index_mut(&mut self, index: Axis) -> &mut Self::Output {
+        match index {
+            Axis::X => &mut self.x,
+            Axis::Y => &mut self.y,
+            Axis::Z => &mut self.z,
             _ => panic!("Index out or range for Vec3"),
         }
     }

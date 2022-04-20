@@ -7,6 +7,7 @@ use ray:: scenes::*;
 use rayon::prelude::*;
 use std::fs::File;
 use std::io::BufWriter;
+use std::io::Write;
 use std::path::PathBuf;
 
 fn write_color(data: &mut Vec<u8>, pixel_color: Color, samples_per_pixel: u32) {
@@ -23,6 +24,34 @@ fn write_color(data: &mut Vec<u8>, pixel_color: Color, samples_per_pixel: u32) {
     data.push((255.999 * r) as u8);
     data.push((255.999 * g) as u8);
     data.push((255.999 * b) as u8);
+}
+
+// TODO use buffered write
+pub fn write_ppm(data: &[u8], width: u32, height: u32, name: &'static str) {
+    let path = format!(r"images/{}", name);
+    let mut num = 0;
+    let mut sketch = PathBuf::from(format!(r"{}_{}", path, num));
+    sketch.set_extension("ppm");
+    while sketch.exists() {
+        num += 1;
+        sketch = PathBuf::from(format!(r"{}_{}", path, num));
+        sketch.set_extension("ppm");
+    }
+    let mut file = File::create(&sketch).unwrap();
+    writeln!(file, "P3").unwrap();
+    writeln!(file, "{} {}", width, height).unwrap();
+    writeln!(file, "255").unwrap();
+    for y in 0..height {
+        for x in 0..width {
+            let offset = ((y * width * 3) + x * 3) as usize;
+            write!(&mut file, "{} {} {} ", 
+                    data[offset + 0],
+                    data[offset + 1],
+                    data[offset + 2]
+                    ).unwrap()
+        }
+        write!(&mut file, "\n").unwrap()
+    }
 }
 
 fn write_png(data: &[u8], width: u32, height: u32, name: &'static str) {
@@ -80,7 +109,7 @@ fn main() {
         vec3(0.0, 1.0, 0.0),
         40.0,
         ASPECT_RATIO,
-        0.1,
+        0.0,
         10.0,
         0.0..1.0,
     );

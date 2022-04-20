@@ -13,6 +13,7 @@ impl Texture for Color {
     }
 }
 
+#[derive(Clone)]
 pub struct CheckeredTexture<T, U>
 where
     T: Texture,
@@ -55,6 +56,7 @@ where
     }
 }
 
+#[derive(Clone)]
 pub struct PerlinTexture {
     pub scale: f64,
     pub noise: Fbm<Perlin>,
@@ -74,6 +76,7 @@ impl Texture for PerlinTexture {
     }
 }
 
+#[derive(Clone)]
 pub struct ImageTexture {
     pub data: Vec<u8>,
     pub width: usize,
@@ -103,9 +106,15 @@ impl Texture for ImageTexture {
         let j = ((v * self.height as f64) as usize).min(self.height - 1);
         let scale = 1.0 / 255.0;
         let k = j * 3 * self.width + i * 3;
-        let x = self.data[k] as f64 * scale;
-        let y = self.data[k + 1] as f64 * scale;
-        let z = self.data[k + 2] as f64 * scale;
-        vec3(x, y, z)
+        let r = self.data[k] as f64 * scale;
+        let g = self.data[k + 1] as f64 * scale;
+        let b = self.data[k + 2] as f64 * scale;
+        color(r, g, b)
+    }
+}
+
+impl<T> Texture for Arc<T> where T: Texture {
+    fn value(&self, u: f64, v: f64, p: Point3) -> Color {
+        self.value(u, v, p)
     }
 }

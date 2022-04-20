@@ -7,4 +7,4 @@ pub mod object;
 pub mod scenes;
 pub mod sphere;
 pub mod texture;
-pub mod xy_rect;
+pub mod rect;
