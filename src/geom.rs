@@ -5,7 +5,7 @@ use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssi
 pub const INFINITY: f64 = std::f64::MAX;
 pub const PI: f64 = std::f64::consts::PI;
 
-#[derive(Clone, Copy, Debug)]
+#[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vec3 {
     pub x: f64,
     pub y: f64,
@@ -178,6 +178,9 @@ impl Div<f64> for Vec3 {
     type Output = Vec3;
 
     fn div(self, rhs: f64) -> Self::Output {
+        if rhs == 0.0 {
+            panic!("Tried to divide a Vec3 by 0")
+        }
         Vec3::new(self.x / rhs, self.y / rhs, self.z / rhs)
     }
 }
@@ -200,6 +203,9 @@ impl Div<Vec3> for f64 {
     type Output = Vec3;
 
     fn div(self, rhs: Vec3) -> Self::Output {
+        if self == 0.0 {
+            panic!("Tried to divide a Vec3 by 0")
+        }
         rhs / self
     }
 }
@@ -321,5 +327,102 @@ impl std::ops::IndexMut<Axis> for Vec3 {
             Axis::Z => &mut self.z,
             _ => panic!("Index out or range for Vec3"),
         }
+    }
+}
+#[cfg(test)]
+mod tests {
+    use super::*;
+
+    #[test]
+    fn test_new() {
+        assert_eq!(Vec3::new(1.0, 2.0, 3.0), Vec3::new(1.0, 2.0, 3.0));
+    }
+
+    #[test]
+    fn test_add() {
+        assert_eq!(
+            Vec3::new(1.0, 0.0, -1.0) + Vec3::new(2.0, 4.0, 6.0),
+            Vec3::new(3.0, 4.0, 5.0)
+        )
+    }
+
+    #[test]
+    fn test_add_assign() {
+        let mut x = Vec3::new(1.0, 0.0, -1.0);
+        x += Vec3::new(2.0, 4.0, 6.0);
+        assert_eq!(x, Vec3::new(3.0, 4.0, 5.0))
+    }
+
+    #[test]
+    fn test_sub() {
+        assert_eq!(
+            Vec3::new(1.0, 0.0, -1.0) - Vec3::new(2.0, 4.0, 6.0),
+            Vec3::new(-1.0, -4.0, -7.0)
+        )
+    }
+    #[test]
+    fn test_sub_assign() {
+        let mut x = Vec3::new(1.0, 0.0, -1.0);
+        x -= Vec3::new(2.0, 4.0, 6.0);
+        assert_eq!(x, Vec3::new(-1.0, -4.0, -7.0))
+    }
+    #[test]
+    fn test_dot() {
+        assert_eq!(dot(Vec3::new(1.0, 0.0, -1.0), ONE), 0.0);
+    }
+
+    #[test]
+    fn test_mul_assign() {
+        let mut x = Vec3::new(1.0, 0.0, -1.0);
+        x *= 2.0;
+        assert_eq!(x, Vec3::new(2.0, 0.0, -2.0));
+    }
+    #[test]
+    fn test_mul_f64() {
+        assert_eq!(Vec3::new(1.0, 0.0, -1.0) * 1.0, Vec3::new(1.0, 0.0, -1.0));
+    }
+    #[test]
+    fn test_div() {
+        assert_eq!(Vec3::new(1.0, -2.0, 0.0) / 2.0, Vec3::new(0.5, -1.0, 0.0));
+    }
+    #[test]
+    fn test_cross() {
+        assert_eq!(
+            cross(Vec3::new(1.0, 2.0, 3.0), Vec3::new(2.0, 3.0, 4.0)),
+            Vec3::new(8.0 - 9.0, 6.0 - 4.0, 3.0 - 4.0)
+        );
+    }
+    #[test]
+    fn test_neg() {
+        assert_eq!(-Vec3::new(1.0, -2.0, 3.0), Vec3::new(-1.0, 2.0, -3.0));
+    }
+
+    #[test]
+    fn test_squared_length() {
+        assert_eq!(Vec3::new(1.0, 2.0, 3.0).length2(), 14.0 as f64);
+    }
+
+    #[test]
+    fn test_length() {
+        assert_eq!(
+            Vec3::new(3.0, 4.0, 5.0).length(),
+            ((3.0 * 3.0 + 4.0 * 4.0 + 5.0 * 5.0) as f64).sqrt()
+        );
+    }
+    #[test]
+    fn test_unit() {
+        assert_eq!(
+            Vec3::new(233.0, 0.0, 0.0).normalize(),
+            Vec3::new(1.0, 0.0, 0.0)
+        );
+        assert_eq!(
+            Vec3::new(-233.0, 0.0, 0.0).normalize(),
+            Vec3::new(-1.0, 0.0, 0.0)
+        );
+    }
+    #[test]
+    #[should_panic]
+    fn test_unit_panic() {
+        Vec3::new(0.0, 0.0, 0.0).normalize();
     }
 }

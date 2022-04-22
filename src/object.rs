@@ -58,6 +58,32 @@ impl HitRecord {
         }
     }
 
+    pub fn with_ray(
+        r: &Ray,
+        p: Point3,
+        outward_normal: Vec3,
+        material: Arc<dyn Material>,
+        t: f64,
+        u: f64,
+        v: f64,
+    ) -> Self {
+        let front_face = dot(r.direction, outward_normal) < 0.0;
+        let normal = if front_face {
+            outward_normal
+        } else {
+            -outward_normal
+        };
+        Self {
+            p,
+            normal,
+            material,
+            t,
+            u,
+            v,
+            front_face,
+        }
+    }
+
     pub fn set_face_normal(&mut self, r: &Ray, outward_normal: Vec3) {
         self.front_face = dot(r.direction, outward_normal) < 0.0;
         self.normal = if self.front_face {

@@ -82,16 +82,7 @@ impl Object for Sphere {
         let p = r.at(root);
         let outward_normal = (p - self.center(r.time)) / self.radius;
         let (u, v) = sphere_uv(outward_normal);
-        let mut rec = HitRecord {
-            p,
-            normal: ZERO,
-            material: self.material.clone(),
-            t: root,
-            u,
-            v,
-            front_face: true,
-        };
-        rec.set_face_normal(r, outward_normal);
+        let rec = HitRecord::with_ray(r, p, outward_normal, self.material.clone(), root, u, v);
         Some(rec)
     }
 

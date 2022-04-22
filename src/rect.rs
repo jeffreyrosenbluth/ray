@@ -56,16 +56,7 @@ impl Object for Rect {
             Axis::Y => vec3(0.0, 1.0, 0.0),
             Axis::Z => vec3(0.0, 0.0, 1.0),
         };
-        let mut rec = HitRecord {
-            p: pt,
-            normal: ZERO,
-            material: self.material.clone(),
-            t,
-            u,
-            v,
-            front_face: true,
-        };
-        rec.set_face_normal(r, outward_normal);
+        let rec = HitRecord::with_ray(r, pt, outward_normal, self.material.clone(), t, u, v);
         Some(rec)
     }
 
