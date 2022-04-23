@@ -9,38 +9,76 @@ use crate::texture::*;
 use rand::prelude::*;
 use std::sync::Arc;
 
-pub fn glass_scene() -> impl Object {
-    let mut world = Objects::new(Vec::new());
-    let mat_ground = Arc::new(Lambertian::solid_color(Color::new(0.8, 0.8, 0.0)));
-    let mat_center = Arc::new(Dielectric::new(1.5));
-    let mat_left = Arc::new(Dielectric::new(1.5));
-    let mat_right = Arc::new(Lambertian::solid_color(Color::new(0.8, 0.6, 0.2)));
-
-    world.add(Sphere::new(point3(0.0, -100.5, -1.0), 100.0, mat_ground));
-    world.add(Sphere::new(point3(0.0, 0.0, -1.0), 0.5, mat_center));
-    world.add(Sphere::new(point3(-1.0, 0.0, -1.0), 0.5, mat_left));
-    world.add(Sphere::new(point3(1.0, 0.0, -1.0), 0.5, mat_right));
-
-    world
+pub struct RenderParams {
+    pub background: Color,
+    pub apsect_ratio: f64,
+    pub width: u32,
+    pub height: u32,
+    pub samples_per_pixel: u32,
+    pub max_depth: u32,
 }
 
-pub fn simple_light() -> impl Object {
-    let perlin = Arc::new(Lambertian::new(PerlinTexture::new(2.0)));
-    let mut objects = Objects::new(Vec::new());
-    objects.add(Sphere::new(
-        point3(0.0, -1000.0, 0.0),
-        1000.0,
-        perlin.clone(),
-    ));
-    objects.add(Sphere::new(point3(0.0, 2.0, 0.0), 2.0, perlin.clone()));
-    let difflight = Arc::new(DiffuseLight::new(point3(4.0, 4.0, 4.0)));
-    let difflight2 = Arc::new(DiffuseLight::new(point3(8.0, 8.0, 8.0)));
-    objects.add(Rect::new(Axis::Z, 3.0, 1.0, 5.0, 3.0, -2.0, difflight));
-    objects.add(Sphere::new(point3(0.0, 7.0, 0.0), 1.5, difflight2));
-    objects
+impl RenderParams {
+    pub fn new(
+        background: Color,
+        apsect_ratio: f64,
+        width: u32,
+        samples_per_pixel: u32,
+        max_depth: u32,
+    ) -> Self {
+        let height = (width as f64 / apsect_ratio) as u32;
+        Self {
+            background,
+            apsect_ratio,
+            width,
+            height,
+            samples_per_pixel,
+            max_depth,
+        }
+    }
 }
 
-pub fn cornell_box() -> impl Object {
+pub struct Environment {
+    pub scene: Box<dyn Object>,
+    pub camera: Camera,
+    pub params: RenderParams,
+}
+
+impl Environment {
+    pub fn new(scene: Box<dyn Object>, camera: Camera, params: RenderParams) -> Self {
+        Self {
+            scene,
+            camera,
+            params,
+        }
+    }
+
+    pub fn background(&self) -> Color {
+        self.params.background
+    }
+
+    pub fn aspect_ratio(&self) -> f64 {
+        self.params.apsect_ratio
+    }
+
+    pub fn width(&self) -> u32 {
+        self.params.width
+    }
+
+    pub fn height(&self) -> u32 {
+        self.params.height
+    }
+
+    pub fn samples_per_pixel(&self) -> u32 {
+        self.params.samples_per_pixel
+    }
+
+    pub fn max_depth(&self) -> u32 {
+        self.params.max_depth
+    }
+}
+
+pub fn cornell_box(smoke: bool) -> Environment {
     let mut objects = Objects::new(Vec::new());
     let red = lambertian(0.65, 0.05, 0.05);
     let white = lambertian(0.73, 0.73, 0.73);
@@ -79,19 +117,33 @@ pub fn cornell_box() -> impl Object {
     let box1 = Cuboid::new(ZERO, point3(165.0, 330.0, 165.0), white.clone());
     let box1 = RotateY::new(box1, 15.0);
     let box1 = Translate::new(box1, vec3(250.0, 0.0, 295.0));
-    objects.add(ConstantMedium::new(box1, BLACK, 0.01));
-    // objects.add(Box::new(box1));
+    if smoke {
+        objects.add(ConstantMedium::new(box1, BLACK, 0.01));
+    } else {
+        objects.add(box1);
+    }
     let box2 = Cuboid::new(ZERO, point3(165.0, 165.0, 165.0), white.clone());
     let box2 = RotateY::new(box2, -18.0);
     let box2 = Translate::new(box2, vec3(130.0, 0.0, 65.0));
-    // objects.add(Box::new(box2));
-    objects.add(ConstantMedium::new(box2, WHITE, 0.01));
-    /*objects.add(make_shared<constant_medium>(box1, 0.01, color(0,0,0));
-    objects.add(make_shared<constant_medium>(box2, 0.01, color(1,1,1)); */
-    objects
+    if smoke {
+        objects.add(ConstantMedium::new(box2, WHITE, 0.01));
+    } else {
+        objects.add(box2);
+    }
+
+    let camera = Camera::basic(
+        point3(278.0, 278.0, -800.0),
+        point3(278.0, 278.0, 0.0),
+        40.0,
+        1.0,
+        0.0,
+        10.0,
+    );
+    let rparams = RenderParams::new(BLACK, 1.0, 600, 200, 50);
+    Environment::new(Box::new(objects), camera, rparams)
 }
 
-pub fn final_scene() -> (impl Object, Camera) {
+pub fn book2_final_scene() -> Environment {
     let mut objects = Objects::new(Vec::new());
     let mut rng = thread_rng();
     let mut boxes1 = Objects::new(Vec::new());
@@ -114,12 +166,8 @@ pub fn final_scene() -> (impl Object, Camera) {
             ));
         }
     }
-    objects.add(BvhNode::new(
-        &mut boxes1,
-        0,
-        BOXES_PER_SIDE * BOXES_PER_SIDE,
-        0.0..1.0,
-    ));
+    let n = boxes1.objects.len();
+    objects.add(BvhNode::new(&mut boxes1, 0, n, 0.0..1.0));
     let light = diffuse_light(7.0, 7.0, 7.0);
     objects.add(Rect::new(Axis::Y, 123.0, 147.0, 423.0, 412.0, 554.0, light));
 
@@ -152,10 +200,10 @@ pub fn final_scene() -> (impl Object, Camera) {
     objects.add(ConstantMedium::new(boundary, WHITE, 0.0001));
 
     let earth_texture = ImageTexture::new("/Users/jeffreyrosenbluth/Rust/ray/assets/earthmap.jpeg");
-    let earth = Arc::new(Lambertian::new(earth_texture));
+    let earth = lambertian_texture(earth_texture);
     objects.add(Sphere::new(point3(400.0, 200.0, 400.0), 100.0, earth));
-    let perlin_texture = PerlinTexture::new(0.1);
-    let perlin = Arc::new(Lambertian::new(perlin_texture));
+    let perlin_texture = PerlinTexture::new(0.08);
+    let perlin = lambertian_texture(perlin_texture);
     objects.add(Sphere::new(point3(220.0, 280.0, 300.0), 80.0, perlin));
 
     let mut boxes2 = Objects::new(Vec::new());
@@ -184,51 +232,20 @@ pub fn final_scene() -> (impl Object, Camera) {
         10.0,
         0.0..1.0,
     );
-    (objects, camera)
+    let rparams = RenderParams::new(BLACK, 1.0, 800, 1000, 50);
+    Environment::new(Box::new(objects), camera, rparams)
 }
 
-pub fn two_perlin_spheres() -> impl Object {
-    let perlin = Arc::new(Lambertian::new(PerlinTexture::new(2.0)));
-    let even = vec3(0.3, 0.1, 0.1);
-    let odd = vec3(0.9, 0.9, 0.9);
-    let checker = Arc::new(Lambertian::new(CheckeredTexture::with_color(even, odd)));
-    let mut objects = Objects::new(Vec::new());
-    objects.add(Sphere::new(
-        point3(0.0, -1000.0, 0.0),
-        1000.0,
-        checker.clone(),
-    ));
-    objects.add(Sphere::new(point3(0.0, 2.0, 0.0), 2.0, perlin));
-    objects
-}
-
-pub fn earth() -> impl Object {
-    let earth_texture = ImageTexture::new("/Users/jeffreyrosenbluth/Rust/ray/assets/earthmap.jpeg");
-    let earth_surface = Arc::new(Lambertian::new(earth_texture));
-    Sphere::new(point3(0.0, 0.0, 0.0), 2.0, earth_surface)
-}
-
-pub fn two_spheres() -> impl Object {
-    let even = vec3(0.3, 0.1, 0.1);
-    let odd = vec3(0.9, 0.9, 0.9);
-    let checker = Arc::new(Lambertian::new(CheckeredTexture::with_color(even, odd)));
-    let mut objects = Objects::new(Vec::new());
-    objects.add(Sphere::new(point3(0.0, -10.0, 0.0), 10.0, checker.clone()));
-    objects.add(Sphere::new(point3(0.0, 10.0, 0.0), 10.0, checker.clone()));
-    objects
-}
-
-pub fn random_scene() -> impl Object {
+pub fn marbles_scene() -> Environment {
     let mut rng = rand::thread_rng();
     let mut world = Objects::new(Vec::new());
-
-    let checker = Arc::new(Lambertian::new(CheckeredTexture::with_color(
-        vec3(0.3, 0.1, 0.1),
+    let checker = lambertian_texture(CheckeredTexture::with_color(
+        vec3(0.3, 0.3, 0.3),
         vec3(0.9, 0.9, 0.9),
-    )));
+    ));
     let ground_sphere = Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, checker);
-
     world.add(ground_sphere);
+    let mut marbles = Objects::new(Vec::new());
 
     for a in -11..=11 {
         for b in -11..=11 {
@@ -247,10 +264,10 @@ pub fn random_scene() -> impl Object {
                 // Diffuse
                 let albedo = rand_color(&mut rng, 0.0..1.0) * rand_color(&mut rng, 0.0..1.0);
                 let sphere_mat = Arc::new(Lambertian::solid_color(albedo));
-                let center2 = center + vec3(0.0, rng.gen_range(0.0..0.5), 0.0);
+                let _center2 = center + vec3(0.0, rng.gen_range(0.0..0.5), 0.0);
                 let sphere = Sphere::new(center, 0.2, sphere_mat);
 
-                world.add(sphere);
+                marbles.add(sphere);
             } else if choose_mat < 0.95 {
                 // Metal
                 let albedo = rand_color(&mut rng, 0.4..1.0);
@@ -258,20 +275,22 @@ pub fn random_scene() -> impl Object {
                 let sphere_mat = Arc::new(Metal::new(albedo, fuzz));
                 let sphere = Sphere::new(center, 0.2, sphere_mat);
 
-                world.add(sphere);
+                marbles.add(sphere);
             } else {
                 // Glass
                 let sphere_mat = Arc::new(Dielectric::new(1.5));
                 let sphere = Sphere::new(center, 0.2, sphere_mat);
 
-                world.add(sphere);
+                marbles.add(sphere);
             }
         }
     }
+    let n = marbles.objects.len();
+    world.add(BvhNode::new(&mut marbles, 0, n, 0.0..1.0));
 
-    let mat1 = Arc::new(Dielectric::new(1.5));
-    let mat2 = Arc::new(Lambertian::solid_color(Color::new(0.4, 0.2, 0.1)));
-    let mat3 = Arc::new(Metal::new(Color::new(0.7, 0.6, 0.5), 0.0));
+    let mat1 = dielectric(1.5);
+    let mat2 = lambertian(0.4, 0.2, 0.1);
+    let mat3 = metal(0.7, 0.6, 0.5, 0.0);
 
     let sphere1 = Sphere::new(Point3::new(0.0, 1.0, 0.0), 1.0, mat1);
     let sphere2 = Sphere::new(Point3::new(-4.0, 1.0, 0.0), 1.0, mat2);
@@ -282,5 +301,11 @@ pub fn random_scene() -> impl Object {
     world.add(sphere3);
 
     let n = world.objects.len();
-    BvhNode::new(&mut world, 0, n, 0.0..1.0)
+    let camera = Camera::basic(point3(13.0, 2.0, 3.0), ZERO, 20.0, 1.5, 0.1, 10.0);
+    let rparams = RenderParams::new(color(0.73, 0.73, 0.73), 1.5, 1200, 100, 50);
+    Environment::new(
+        Box::new(BvhNode::new(&mut world, 0, n, 0.0..1.0)),
+        camera,
+        rparams,
+    )
 }

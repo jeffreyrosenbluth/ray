@@ -117,6 +117,16 @@ impl Objects {
     }
 }
 
+impl Object for Box<dyn Object> {
+    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+        self.as_ref().hit(r, t_min, t_max)
+    }
+
+    fn bounding_box(&self, time_range: &Range<f64>) -> Option<Aabb> {
+        self.as_ref().bounding_box(time_range)
+    }
+}
+
 impl Object for Objects {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let mut rec = None;

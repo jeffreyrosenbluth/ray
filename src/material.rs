@@ -37,6 +37,10 @@ pub fn lambertian(r: f64, g: f64, b: f64) -> Arc<Lambertian<Color>> {
     Arc::new(Lambertian::solid_color(color(r, g, b)))
 }
 
+pub fn lambertian_texture(texture: impl Texture) -> Arc<Lambertian<impl Texture>> {
+    Arc::new(Lambertian::new(texture))
+}
+
 impl<T> Material for Lambertian<T>
 where
     T: Texture,

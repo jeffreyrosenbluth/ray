@@ -50,6 +50,26 @@ impl Camera {
         }
     }
 
+    pub fn basic(
+        origin: Point3,
+        lookat: Point3,
+        vfov: f64,
+        aspect_ratio: f64,
+        aperture: f64,
+        focus_dist: f64,
+    ) -> Self {
+        Self::new(
+            origin,
+            lookat,
+            vec3(0.0, 1.0, 0.0),
+            vfov,
+            aspect_ratio,
+            aperture,
+            focus_dist,
+            0.0..1.0,
+        )
+    }
+
     pub fn get_ray(&self, s: f64, t: f64) -> Ray {
         let mut rng = thread_rng();
         let rd = self.aperture / 2.0 * random_in_unit_disk(&mut rng);
