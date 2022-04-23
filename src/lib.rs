@@ -9,3 +9,4 @@ pub mod render;
 pub mod scenes;
 pub mod sphere;
 pub mod texture;
+pub mod io;

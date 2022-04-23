@@ -191,100 +191,24 @@ where
     }
 }
 
-// pub struct Rotate<T> {
-//     pub axis: Axis,
-//     pub object: T,
-//     pub sin: f64,
-//     pub cos: f64,
-//     pub bbox: Option<Aabb>,
-// }
-
-// impl<T> Rotate<T>
-// where
-//     T: Object,
-// {
-//     pub fn new(axis: Axis, object: T, degrees: f64) -> Self {
-//         let theta = degrees * PI / 180.0;
-//         let sin = theta.sin();
-//         let cos = theta.cos();
-//         let mut rect = Aabb::EMPTY;
-//         let (p, q, s) = axis.order();
-//         let bbox = object.bounding_box(&(0.0..1.0)).map(|b| {
-//             for i in 0..2 {
-//                 for j in 0..2 {
-//                     for k in 0..2 {
-//                         let x = i as f64 * b.box_max.x + (1.0 - i as f64) * b.box_min.x;
-//                         let y = j as f64 * b.box_max.y + (1.0 - j as f64) * b.box_min.y;
-//                         let z = k as f64 * b.box_max.z + (1.0 - k as f64) * b.box_min.z;
-//                         let newx = cos * x + sin * z;
-//                         let newz = -sin * x + cos * z;
-//                         let tester = vec3(newx, y, newz);
-//                         for c in 0..3 {
-//                             rect.box_min[c] = rect.box_min[c].min(tester[c]);
-//                             rect.box_max[c] = rect.box_max[c].min(tester[c]);
-//                         }
-//                     }
-//                 }
-//             }
-//             rect
-//         });
-//         Self {
-//             axis,
-//             object,
-//             sin,
-//             cos,
-//             bbox,
-//         }
-//     }
-// }
-
-// impl<T> Object for Rotate<T>
-// where
-//     T: Object,
-// {
-//     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
-//         let mut origin = r.origin;
-//         let mut direction = r.direction;
-//         origin[0] = self.cos * r.origin[0] - self.sin * r.origin[2];
-//         origin[2] = self.sin * r.origin[0] + self.cos * r.origin[2];
-//         direction[0] = self.cos * r.direction[0] - self.sin * r.direction[2];
-//         direction[2] = self.sin * r.direction[0] + self.cos * r.direction[2];
-//         let rotated_r = Ray::new(origin, direction, r.time);
-//         let hr = self.object.hit(&rotated_r, t_min, t_max).map(|mut rec| {
-//             let mut p = rec.p;
-//             let mut normal = rec.normal;
-//             p[0] = self.cos * rec.p[0] + self.sin * rec.p[2];
-//             p[2] = -self.sin * rec.p[0] + self.cos * rec.p[2];
-//             normal[0] = self.cos * rec.normal[0] + self.sin * rec.normal[2];
-//             normal[2] = -self.sin * rec.normal[0] + self.cos * rec.normal[2];
-//             rec.p = p;
-//             rec.set_face_normal(&rotated_r, normal);
-//             rec
-//         });
-//         hr
-//     }
-
-//     fn bounding_box(&self, _time_range: &Range<f64>) -> Option<Aabb> {
-//         self.bbox
-//     }
-// }
-
-pub struct RotateY<T> {
+pub struct Rotate<T> {
+    pub axis: Axis,
     pub object: T,
     pub sin: f64,
     pub cos: f64,
     pub bbox: Option<Aabb>,
 }
 
-impl<T> RotateY<T>
+impl<T> Rotate<T>
 where
     T: Object,
 {
-    pub fn new(object: T, degrees: f64) -> Self {
+    pub fn new(axis: Axis, object: T, degrees: f64) -> Self {
         let theta = degrees * PI / 180.0;
         let sin = theta.sin();
         let cos = theta.cos();
         let mut rect = Aabb::EMPTY;
+        let (p, q, s) = axis.order();
         let bbox = object.bounding_box(&(0.0..1.0)).map(|b| {
             for i in 0..2 {
                 for j in 0..2 {
@@ -292,9 +216,13 @@ where
                         let x = i as f64 * b.box_max.x + (1.0 - i as f64) * b.box_min.x;
                         let y = j as f64 * b.box_max.y + (1.0 - j as f64) * b.box_min.y;
                         let z = k as f64 * b.box_max.z + (1.0 - k as f64) * b.box_min.z;
-                        let newx = cos * x + sin * z;
-                        let newz = -sin * x + cos * z;
-                        let tester = vec3(newx, y, newz);
+                        let coords = vec3(x, y, z);
+                        let newp = cos * coords[p] + sin * coords[q];
+                        let newq = -sin * coords[p] + cos * coords[q];
+                        let mut tester = ZERO;
+                        tester[p] = newp;
+                        tester[q] = newq;
+                        tester[s] = coords[s];
                         for c in 0..3 {
                             rect.box_min[c] = rect.box_min[c].min(tester[c]);
                             rect.box_max[c] = rect.box_max[c].min(tester[c]);
@@ -305,6 +233,7 @@ where
             rect
         });
         Self {
+            axis,
             object,
             sin,
             cos,
@@ -313,26 +242,27 @@ where
     }
 }
 
-impl<T> Object for RotateY<T>
+impl<T> Object for Rotate<T>
 where
     T: Object,
 {
     fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
         let mut origin = r.origin;
         let mut direction = r.direction;
-        origin[0] = self.cos * r.origin[0] - self.sin * r.origin[2];
-        origin[2] = self.sin * r.origin[0] + self.cos * r.origin[2];
-        direction[0] = self.cos * r.direction[0] - self.sin * r.direction[2];
-        direction[2] = self.sin * r.direction[0] + self.cos * r.direction[2];
+        let (p, q, _) = self.axis.order();
+        origin[p] = self.cos * r.origin[p] - self.sin * r.origin[q];
+        origin[q] = self.sin * r.origin[p] + self.cos * r.origin[q];
+        direction[p] = self.cos * r.direction[p] - self.sin * r.direction[q];
+        direction[q] = self.sin * r.direction[p] + self.cos * r.direction[q];
         let rotated_r = Ray::new(origin, direction, r.time);
         let hr = self.object.hit(&rotated_r, t_min, t_max).map(|mut rec| {
-            let mut p = rec.p;
+            let mut pt = rec.p;
             let mut normal = rec.normal;
-            p[0] = self.cos * rec.p[0] + self.sin * rec.p[2];
-            p[2] = -self.sin * rec.p[0] + self.cos * rec.p[2];
-            normal[0] = self.cos * rec.normal[0] + self.sin * rec.normal[2];
-            normal[2] = -self.sin * rec.normal[0] + self.cos * rec.normal[2];
-            rec.p = p;
+            pt[p] = self.cos * rec.p[p] + self.sin * rec.p[q];
+            pt[q] = -self.sin * rec.p[p] + self.cos * rec.p[q];
+            normal[p] = self.cos * rec.normal[p] + self.sin * rec.normal[q];
+            normal[q] = -self.sin * rec.normal[p] + self.cos * rec.normal[q];
+            rec.p = pt;
             rec.set_face_normal(&rotated_r, normal);
             rec
         });

@@ -115,7 +115,7 @@ pub fn cornell_box(smoke: bool) -> Environment {
         white.clone(),
     ));
     let box1 = Cuboid::new(ZERO, point3(165.0, 330.0, 165.0), white.clone());
-    let box1 = RotateY::new(box1, 15.0);
+    let box1 = Rotate::new(Axis::Y, box1, 15.0);
     let box1 = Translate::new(box1, vec3(250.0, 0.0, 295.0));
     if smoke {
         objects.add(ConstantMedium::new(box1, BLACK, 0.01));
@@ -123,7 +123,8 @@ pub fn cornell_box(smoke: bool) -> Environment {
         objects.add(box1);
     }
     let box2 = Cuboid::new(ZERO, point3(165.0, 165.0, 165.0), white.clone());
-    let box2 = RotateY::new(box2, -18.0);
+    let box2 = Rotate::new(Axis::Y, box2, -18.0);
+    let box2 = Rotate::new(Axis::X, box2, 15.0);
     let box2 = Translate::new(box2, vec3(130.0, 0.0, 65.0));
     if smoke {
         objects.add(ConstantMedium::new(box2, WHITE, 0.01));
@@ -218,7 +219,7 @@ pub fn book2_final_scene() -> Environment {
     }
 
     objects.add(Translate::new(
-        RotateY::new(BvhNode::new(&mut boxes2, 0, ns, 0.0..1.0), 15.0),
+        Rotate::new(Axis::Y, BvhNode::new(&mut boxes2, 0, ns, 0.0..1.0), 15.0),
         vec3(-100.0, 270.0, 395.0),
     ));
 
