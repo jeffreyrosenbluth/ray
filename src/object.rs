@@ -10,11 +10,11 @@ use std::sync::Arc;
 pub struct Ray {
     pub origin: Point3,
     pub direction: Vec3,
-    pub time: f64,
+    pub time: Float,
 }
 
 impl Ray {
-    pub fn new(origin: Point3, direction: Vec3, time: f64) -> Self {
+    pub fn new(origin: Point3, direction: Vec3, time: Float) -> Self {
         Self {
             origin,
             direction,
@@ -22,7 +22,7 @@ impl Ray {
         }
     }
 
-    pub fn at(&self, t: f64) -> Point3 {
+    pub fn at(&self, t: Float) -> Point3 {
         self.origin + t * self.direction
     }
 }
@@ -31,9 +31,9 @@ pub struct HitRecord {
     pub p: Point3,
     pub normal: Vec3,
     pub material: Arc<dyn Material>,
-    pub t: f64,
-    pub u: f64,
-    pub v: f64,
+    pub t: Float,
+    pub u: Float,
+    pub v: Float,
     pub front_face: bool,
 }
 
@@ -42,9 +42,9 @@ impl HitRecord {
         p: Point3,
         normal: Vec3,
         material: Arc<dyn Material>,
-        t: f64,
-        u: f64,
-        v: f64,
+        t: Float,
+        u: Float,
+        v: Float,
         front_face: bool,
     ) -> Self {
         Self {
@@ -63,9 +63,9 @@ impl HitRecord {
         p: Point3,
         outward_normal: Vec3,
         material: Arc<dyn Material>,
-        t: f64,
-        u: f64,
-        v: f64,
+        t: Float,
+        u: Float,
+        v: Float,
     ) -> Self {
         let front_face = dot(r.direction, outward_normal) < 0.0;
         let normal = if front_face {
@@ -95,8 +95,8 @@ impl HitRecord {
 }
 
 pub trait Object: Send + Sync {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord>;
-    fn bounding_box(&self, time_range: &Range<f64>) -> Option<Aabb>;
+    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord>;
+    fn bounding_box(&self, time_range: &Range<Float>) -> Option<Aabb>;
 }
 
 pub struct Objects {
@@ -118,17 +118,17 @@ impl Objects {
 }
 
 impl Object for Box<dyn Object> {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
         self.as_ref().hit(r, t_min, t_max)
     }
 
-    fn bounding_box(&self, time_range: &Range<f64>) -> Option<Aabb> {
+    fn bounding_box(&self, time_range: &Range<Float>) -> Option<Aabb> {
         self.as_ref().bounding_box(time_range)
     }
 }
 
 impl Object for Objects {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
         let mut rec = None;
         let mut closest_so_far = t_max;
         for object in &self.objects {
@@ -140,7 +140,7 @@ impl Object for Objects {
         rec
     }
 
-    fn bounding_box(&self, time_range: &Range<f64>) -> Option<Aabb> {
+    fn bounding_box(&self, time_range: &Range<Float>) -> Option<Aabb> {
         let aabb = self.objects.iter().fold(Some(Aabb::EMPTY), |mut acc, o| {
             if let Some(b) = o.bounding_box(time_range) {
                 acc = Some(surrounding_box(acc.unwrap(), b));
@@ -168,7 +168,7 @@ impl<T> Object for Translate<T>
 where
     T: Object,
 {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
         let moved_r = Ray::new(r.origin - self.offset, r.direction, r.time);
         if let Some(mut rec) = self.object.hit(&moved_r, t_min, t_max) {
             rec.p += self.offset;
@@ -179,7 +179,7 @@ where
         }
     }
 
-    fn bounding_box(&self, time_range: &Range<f64>) -> Option<Aabb> {
+    fn bounding_box(&self, time_range: &Range<Float>) -> Option<Aabb> {
         if let Some(bbox) = self.object.bounding_box(time_range) {
             Some(Aabb::new(
                 bbox.box_min + self.offset,
@@ -194,8 +194,8 @@ where
 pub struct Rotate<T> {
     pub axis: Axis,
     pub object: T,
-    pub sin: f64,
-    pub cos: f64,
+    pub sin: Float,
+    pub cos: Float,
     pub bbox: Option<Aabb>,
 }
 
@@ -203,7 +203,7 @@ impl<T> Rotate<T>
 where
     T: Object,
 {
-    pub fn new(axis: Axis, object: T, degrees: f64) -> Self {
+    pub fn new(axis: Axis, object: T, degrees: Float) -> Self {
         let theta = degrees * PI / 180.0;
         let sin = theta.sin();
         let cos = theta.cos();
@@ -213,9 +213,9 @@ where
             for i in 0..2 {
                 for j in 0..2 {
                     for k in 0..2 {
-                        let x = i as f64 * b.box_max.x + (1.0 - i as f64) * b.box_min.x;
-                        let y = j as f64 * b.box_max.y + (1.0 - j as f64) * b.box_min.y;
-                        let z = k as f64 * b.box_max.z + (1.0 - k as f64) * b.box_min.z;
+                        let x = i as Float * b.box_max.x + (1.0 - i as Float) * b.box_min.x;
+                        let y = j as Float * b.box_max.y + (1.0 - j as Float) * b.box_min.y;
+                        let z = k as Float * b.box_max.z + (1.0 - k as Float) * b.box_min.z;
                         let coords = vec3(x, y, z);
                         let newp = cos * coords[p] + sin * coords[q];
                         let newq = -sin * coords[p] + cos * coords[q];
@@ -246,7 +246,7 @@ impl<T> Object for Rotate<T>
 where
     T: Object,
 {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
         let mut origin = r.origin;
         let mut direction = r.direction;
         let (p, q, _) = self.axis.order();
@@ -269,7 +269,7 @@ where
         hr
     }
 
-    fn bounding_box(&self, _time_range: &Range<f64>) -> Option<Aabb> {
+    fn bounding_box(&self, _time_range: &Range<Float>) -> Option<Aabb> {
         self.bbox
     }
 }
@@ -277,11 +277,11 @@ where
 pub struct ConstantMedium<O> {
     pub boundary: O,
     pub phase_function: Isotropic<Color>,
-    pub neg_inv_density: f64,
+    pub neg_inv_density: Float,
 }
 
 impl<O> ConstantMedium<O> {
-    pub fn new(boundary: O, color: Color, d: f64) -> Self {
+    pub fn new(boundary: O, color: Color, d: Float) -> Self {
         Self {
             boundary,
             phase_function: Isotropic::new(color),
@@ -294,10 +294,10 @@ impl<O> Object for ConstantMedium<O>
 where
     O: Object,
 {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
         let mut rng = thread_rng();
-        let mut rec1 = self.boundary.hit(r, f64::MIN, f64::MAX)?;
-        let mut rec2 = self.boundary.hit(r, rec1.t + 0.0001, f64::MAX)?;
+        let mut rec1 = self.boundary.hit(r, Float::MIN, Float::MAX)?;
+        let mut rec2 = self.boundary.hit(r, rec1.t + 0.0001, Float::MAX)?;
         rec1.t = rec1.t.max(t_min);
         rec2.t = rec2.t.min(t_max);
         if rec1.t >= rec2.t {
@@ -306,7 +306,7 @@ where
         rec1.t = rec1.t.max(0.0);
         let ray_length = r.direction.length();
         let distance_inside_boundary = (rec2.t - rec1.t) * ray_length;
-        let hit_distance = self.neg_inv_density * rng.gen::<f64>().ln();
+        let hit_distance = self.neg_inv_density * rng.gen::<Float>().ln();
         if hit_distance > distance_inside_boundary {
             return None;
         }
@@ -322,7 +322,7 @@ where
         ))
     }
 
-    fn bounding_box(&self, time_range: &std::ops::Range<f64>) -> Option<crate::aabb::Aabb> {
+    fn bounding_box(&self, time_range: &std::ops::Range<Float>) -> Option<crate::aabb::Aabb> {
         self.boundary.bounding_box(time_range)
     }
 }

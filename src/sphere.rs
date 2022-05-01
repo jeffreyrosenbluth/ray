@@ -2,25 +2,25 @@ use crate::aabb::*;
 use crate::geom::*;
 use crate::material::Material;
 use crate::object::*;
-use std::f64::consts::PI;
+use std::f32::consts::PI;
 use std::ops::Range;
 use std::sync::Arc;
 
 pub struct Sphere {
     pub center0: Point3,
     pub center1: Point3,
-    pub radius: f64,
+    pub radius: Float,
     pub material: Arc<dyn Material>,
-    pub time_range: Range<f64>,
+    pub time_range: Range<Float>,
 }
 
 impl Sphere {
     pub fn new_moving(
         center0: Point3,
         center1: Point3,
-        radius: f64,
+        radius: Float,
         material: Arc<dyn Material>,
-        time_range: Range<f64>,
+        time_range: Range<Float>,
     ) -> Self {
         Self {
             center0,
@@ -31,7 +31,7 @@ impl Sphere {
         }
     }
 
-    pub fn new(center0: Point3, radius: f64, material: Arc<dyn Material>) -> Self {
+    pub fn new(center0: Point3, radius: Float, material: Arc<dyn Material>) -> Self {
         Self {
             center0,
             center1: center0,
@@ -41,7 +41,7 @@ impl Sphere {
         }
     }
 
-    pub fn center(&self, time: f64) -> Point3 {
+    pub fn center(&self, time: Float) -> Point3 {
         if self.time_range.is_empty() {
             return self.center0;
         }
@@ -52,14 +52,14 @@ impl Sphere {
 }
 
 /// Returns (u, v)
-pub fn sphere_uv(p: Point3) -> (f64, f64) {
+pub fn sphere_uv(p: Point3) -> (Float, Float) {
     let theta = (-p.y).acos();
     let phi = (-p.z).atan2(p.x) + PI;
     (phi / (2.0 * PI), theta / PI)
 }
 
 impl Object for Sphere {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
         let oc = r.origin - self.center(r.time);
         let a = r.direction.length2();
         let half_b = dot(oc, r.direction);
@@ -86,7 +86,7 @@ impl Object for Sphere {
         Some(rec)
     }
 
-    fn bounding_box(&self, time_range: &Range<f64>) -> Option<crate::aabb::Aabb> {
+    fn bounding_box(&self, time_range: &Range<Float>) -> Option<crate::aabb::Aabb> {
         let box0 = Aabb::new(
             self.center(self.time_range.start) - vec3(self.radius, self.radius, self.radius),
             self.center(time_range.start) + vec3(self.radius, self.radius, self.radius),

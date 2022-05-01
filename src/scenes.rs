@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 pub struct RenderParams {
     pub background: Color,
-    pub apsect_ratio: f64,
+    pub apsect_ratio: Float,
     pub width: u32,
     pub height: u32,
     pub samples_per_pixel: u32,
@@ -21,12 +21,12 @@ pub struct RenderParams {
 impl RenderParams {
     pub fn new(
         background: Color,
-        apsect_ratio: f64,
+        apsect_ratio: Float,
         width: u32,
         samples_per_pixel: u32,
         max_depth: u32,
     ) -> Self {
-        let height = (width as f64 / apsect_ratio) as u32;
+        let height = (width as Float / apsect_ratio) as u32;
         Self {
             background,
             apsect_ratio,
@@ -57,7 +57,7 @@ impl Environment {
         self.params.background
     }
 
-    pub fn aspect_ratio(&self) -> f64 {
+    pub fn aspect_ratio(&self) -> Float {
         self.params.apsect_ratio
     }
 
@@ -80,13 +80,15 @@ impl Environment {
 
 pub fn cornell_box(smoke: bool) -> Environment {
     let mut objects = Objects::new(Vec::new());
-    let red = lambertian(0.65, 0.05, 0.05);
+    let red = lambertian(0.55, 0.05, 0.05);
     let white = lambertian(0.73, 0.73, 0.73);
-    let green = lambertian(0.12, 0.45, 0.15);
+    let green = lambertian(0.12, 0.15, 0.45);
     let light = diffuse_light(7.0, 7.0, 7.0);
+    let aluminum = metal(0.8, 0.85, 0.88, 0.0);
+    let glass = dielectric(1.5);
     objects.add(Rect::new(Axis::X, 0.0, 0.0, 555.0, 555.0, 555.0, green));
     objects.add(Rect::new(Axis::X, 0.0, 0.0, 555.0, 555.0, 0.0, red));
-    objects.add(Rect::new(Axis::Y, 113.0, 127.0, 443.0, 432.0, 554.0, light));
+    objects.add(Rect::new(Axis::Y, 163.0, 177.0, 393.0, 392.0, 554.0, light));
     objects.add(Rect::new(
         Axis::Y,
         0.0,
@@ -114,7 +116,7 @@ pub fn cornell_box(smoke: bool) -> Environment {
         555.0,
         white.clone(),
     ));
-    let box1 = Cuboid::new(ZERO, point3(165.0, 330.0, 165.0), white.clone());
+    let box1 = Cuboid::new(ZERO, point3(165.0, 330.0, 165.0), aluminum);
     let box1 = Rotate::new(Axis::Y, box1, 15.0);
     let box1 = Translate::new(box1, vec3(250.0, 0.0, 295.0));
     if smoke {
@@ -122,15 +124,16 @@ pub fn cornell_box(smoke: bool) -> Environment {
     } else {
         objects.add(box1);
     }
-    let box2 = Cuboid::new(ZERO, point3(165.0, 165.0, 165.0), white.clone());
-    let box2 = Rotate::new(Axis::Y, box2, -18.0);
-    let box2 = Rotate::new(Axis::X, box2, 15.0);
-    let box2 = Translate::new(box2, vec3(130.0, 0.0, 65.0));
-    if smoke {
-        objects.add(ConstantMedium::new(box2, WHITE, 0.01));
-    } else {
-        objects.add(box2);
-    }
+    objects.add(Sphere::new(point3(190.0 ,90.0 , 190.0), 90.0 , glass));
+    // let box2 = Cuboid::new(ZERO, point3(165.0, 165.0, 165.0), white.clone());
+    // let box2 = Rotate::new(Axis::Y, box2, -18.0);
+    // let box2 = Rotate::new(Axis::X, box2, 15.0);
+    // let box2 = Translate::new(box2, vec3(130.0, 0.0, 65.0));
+    // if smoke {
+    //     objects.add(ConstantMedium::new(box2, WHITE, 0.01));
+    // } else {
+    //     objects.add(box2);
+    // }
 
     let camera = Camera::basic(
         point3(278.0, 278.0, -800.0),
@@ -140,7 +143,7 @@ pub fn cornell_box(smoke: bool) -> Environment {
         0.0,
         10.0,
     );
-    let rparams = RenderParams::new(BLACK, 1.0, 600, 200, 50);
+    let rparams = RenderParams::new(BLACK, 1.0, 600, 800, 50);
     Environment::new(Box::new(objects), camera, rparams)
 }
 
@@ -154,11 +157,11 @@ pub fn book2_final_scene() -> Environment {
     for i in 0..BOXES_PER_SIDE {
         for j in 0..BOXES_PER_SIDE {
             let w = 100.0;
-            let x0 = -1000.0 + i as f64 * w;
-            let z0 = -1000.0 + j as f64 * w;
+            let x0 = -1000.0 + i as Float * w;
+            let z0 = -1000.0 + j as Float * w;
             let y0 = 0.0;
             let x1 = x0 + w;
-            let y1 = rng.gen_range(1f64..101.0);
+            let y1 = rng.gen_range(1.0..101.0);
             let z1 = z0 + w;
             boxes1.add(Cuboid::new(
                 point3(x0, y0, z0),
@@ -254,11 +257,11 @@ pub fn marbles_scene() -> Environment {
             if a == 4 && b == 0 {
                 continue;
             };
-            let choose_mat: f64 = rng.gen();
+            let choose_mat: Float = rng.gen();
             let center = Point3::new(
-                (a as f64) + rng.gen_range(0.0..0.9),
+                (a as Float) + rng.gen_range(0.0..0.9),
                 0.2,
-                (b as f64) + rng.gen_range(0.0..0.9),
+                (b as Float) + rng.gen_range(0.0..0.9),
             );
 
             if choose_mat < 0.85 {

@@ -14,18 +14,18 @@ impl Aabb {
 
     pub const EMPTY: Self = Aabb {
         box_min: Vec3 {
-            x: f64::MAX,
-            y: f64::MAX,
-            z: f64::MAX,
+            x: Float::MAX,
+            y: Float::MAX,
+            z: Float::MAX,
         },
         box_max: Vec3 {
-            x: f64::MIN,
-            y: f64::MIN,
-            z: f64::MIN,
+            x: Float::MIN,
+            y: Float::MIN,
+            z: Float::MIN,
         },
     };
 
-    pub fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> bool {
+    pub fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> bool {
         for a in 0..3 {
             let inv_d = 1.0 / r.direction[a];
             let mut t0 = (self.box_min[a] - r.origin[a]) * inv_d;

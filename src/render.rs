@@ -26,7 +26,7 @@ fn write_color(data: &mut Vec<u8>, pixel_color: Color, samples_per_pixel: u32) {
     let mut b = pixel_color.z;
 
     // Divide the color by the number of samples.
-    let scale = 1.0 / samples_per_pixel as f64;
+    let scale = 1.0 / samples_per_pixel as Float;
     r = (scale * r).sqrt();
     g = (scale * g).sqrt();
     b = (scale * b).sqrt();
@@ -49,11 +49,11 @@ pub fn render(environment: &Environment) -> Vec<u8> {
                 let mut pixel_color = BLACK;
                 for _ in 0..environment.samples_per_pixel() {
                     let mut rng = rand::thread_rng();
-                    let random_u: f64 = rng.gen();
-                    let random_v: f64 = rng.gen();
+                    let random_u: Float = rng.gen();
+                    let random_v: Float = rng.gen();
 
-                    let u = ((i as f64) + random_u) / ((w - 1) as f64);
-                    let v = ((j as f64) + random_v) / ((h - 1) as f64);
+                    let u = ((i as Float) + random_u) / ((w - 1) as Float);
+                    let v = ((j as Float) + random_v) / ((h - 1) as Float);
 
                     let r = environment.camera.get_ray(u, v);
                     pixel_color += ray_color(

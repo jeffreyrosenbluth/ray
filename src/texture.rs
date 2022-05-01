@@ -4,11 +4,11 @@ use noise::*;
 use std::sync::Arc;
 
 pub trait Texture: Sync + Send {
-    fn value(&self, u: f64, v: f64, p: Point3) -> Color;
+    fn value(&self, u: Float, v: Float, p: Point3) -> Color;
 }
 
 impl Texture for Color {
-    fn value(&self, _u: f64, _v: f64, _p: Point3) -> Color {
+    fn value(&self, _u: Float, _v: Float, _p: Point3) -> Color {
         *self
     }
 }
@@ -46,7 +46,7 @@ where
     T: Texture,
     U: Texture,
 {
-    fn value(&self, u: f64, v: f64, p: Point3) -> Color {
+    fn value(&self, u: Float, v: Float, p: Point3) -> Color {
         let sines = (10.0 * p.x).sin() * (10.0 * p.y).sin() * (10.0 * p.z).sin();
         if sines < 0.0 {
             return self.odd.value(u, v, p);
@@ -58,21 +58,25 @@ where
 
 #[derive(Clone)]
 pub struct PerlinTexture {
-    pub scale: f64,
+    pub scale: Float,
     pub noise: Fbm<Perlin>,
 }
 
 impl PerlinTexture {
-    pub fn new(scale: f64) -> Self {
+    pub fn new(scale: Float) -> Self {
         let noise = Fbm::<Perlin>::new(0).set_octaves(7);
         Self { scale, noise }
     }
 }
 
 impl Texture for PerlinTexture {
-    fn value(&self, _u: f64, _v: f64, p: Point3) -> Color {
+    fn value(&self, _u: Float, _v: Float, p: Point3) -> Color {
         let p = p * self.scale;
-        ONE * 0.5 * (1.0 + ((p.z * self.scale) + 5.0 * self.noise.get([p.x, p.y, p.z]).abs()).sin())
+        ONE * 0.5
+            * (1.0
+                + ((p.z * self.scale)
+                    + 5.0 * (self.noise.get([p.x as f64, p.y as f64, p.z as f64]).abs() as Float))
+                    .sin())
     }
 }
 
@@ -99,16 +103,16 @@ impl ImageTexture {
 }
 
 impl Texture for ImageTexture {
-    fn value(&self, u: f64, v: f64, _p: Point3) -> Color {
+    fn value(&self, u: Float, v: Float, _p: Point3) -> Color {
         let u = u.clamp(0.0, 1.0);
         let v = 1.0 - v.clamp(0.0, 1.0);
-        let i = ((u * self.width as f64) as usize).min(self.width - 1);
-        let j = ((v * self.height as f64) as usize).min(self.height - 1);
+        let i = ((u * self.width as Float) as usize).min(self.width - 1);
+        let j = ((v * self.height as Float) as usize).min(self.height - 1);
         let scale = 1.0 / 255.0;
         let k = j * 3 * self.width + i * 3;
-        let r = self.data[k] as f64 * scale;
-        let g = self.data[k + 1] as f64 * scale;
-        let b = self.data[k + 2] as f64 * scale;
+        let r = self.data[k] as Float * scale;
+        let g = self.data[k + 1] as Float * scale;
+        let b = self.data[k + 2] as Float * scale;
         color(r, g, b)
     }
 }

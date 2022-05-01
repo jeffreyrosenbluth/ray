@@ -1,5 +1,6 @@
 use crate::aabb::*;
 use crate::object::*;
+use crate::geom::Float;
 use rand::prelude::*;
 use std::cmp::Ordering;
 use std::ops::Range;
@@ -12,7 +13,7 @@ pub struct BvhNode {
 }
 
 impl BvhNode {
-    pub fn new(objects: &mut Objects, start: usize, end: usize, time: Range<f64>) -> Self {
+    pub fn new(objects: &mut Objects, start: usize, end: usize, time: Range<Float>) -> Self {
         let mut rng = rand::thread_rng();
         let axis = rng.gen_range(0..3);
         let comparator = match axis {
@@ -76,7 +77,7 @@ impl BvhNode {
 }
 
 impl Object for BvhNode {
-    fn hit(&self, ray: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    fn hit(&self, ray: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
         if !self.bbox.hit(ray, t_min, t_max) {
             return None;
         }
@@ -90,7 +91,7 @@ impl Object for BvhNode {
         right_record.or(left_record)
     }
 
-    fn bounding_box(&self, _time_range: &std::ops::Range<f64>) -> Option<Aabb> {
+    fn bounding_box(&self, _time_range: &std::ops::Range<Float>) -> Option<Aabb> {
         Some(self.bbox)
     }
 }

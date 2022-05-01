@@ -2,14 +2,16 @@ use rand::distributions::{Distribution, Standard};
 use rand::prelude::*;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
-pub const INFINITY: f64 = std::f64::MAX;
-pub const PI: f64 = std::f64::consts::PI;
+pub type Float = f32;
+
+pub const INFINITY: Float = std::f32::MAX;
+pub const PI: Float = std::f32::consts::PI;
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Vec3 {
-    pub x: f64,
-    pub y: f64,
-    pub z: f64,
+    pub x: Float,
+    pub y: Float,
+    pub z: Float,
 }
 
 pub type Point3 = Vec3;
@@ -38,32 +40,32 @@ pub const ONE: Vec3 = Vec3 {
     z: 1.0,
 };
 
-pub fn degrees_to_radians(degrees: f64) -> f64 {
+pub fn degrees_to_radians(degrees: Float) -> Float {
     degrees * PI / 180.0
 }
 
-pub fn vec3(x: f64, y: f64, z: f64) -> Vec3 {
+pub fn vec3(x: Float, y: Float, z: Float) -> Vec3 {
     Vec3::new(x, y, z)
 }
 
-pub fn point3(x: f64, y: f64, z: f64) -> Point3 {
+pub fn point3(x: Float, y: Float, z: Float) -> Point3 {
     Point3::new(x, y, z)
 }
 
-pub fn color(r: f64, g: f64, b: f64) -> Color {
+pub fn color(r: Float, g: Float, b: Float) -> Color {
     point3(r, g, b)
 }
 
 impl Vec3 {
-    pub fn new(x: f64, y: f64, z: f64) -> Self {
+    pub fn new(x: Float, y: Float, z: Float) -> Self {
         Self { x, y, z }
     }
 
-    pub fn length2(self) -> f64 {
+    pub fn length2(self) -> Float {
         dot(self, self)
     }
 
-    pub fn length(self) -> f64 {
+    pub fn length(self) -> Float {
         self.length2().sqrt()
     }
 
@@ -72,11 +74,11 @@ impl Vec3 {
     }
 
     pub fn near_zero(self) -> bool {
-        const EPS: f64 = 1.0e-8;
+        const EPS: Float = 1.0e-8;
         self.x.abs() < EPS && self.y.abs() < EPS && self.z.abs() < EPS
     }
 
-    pub fn map(self, f: fn(f64) -> f64) -> Self {
+    pub fn map(self, f: fn(Float) -> Float) -> Self {
         Self {
             x: f(self.x),
             y: f(self.y),
@@ -85,15 +87,15 @@ impl Vec3 {
     }
 }
 
-pub fn dist2(v: Vec3, w: Vec3) -> f64 {
+pub fn dist2(v: Vec3, w: Vec3) -> Float {
     vec3(v.x - w.x, v.y - w.y, v.z - w.z).length2()
 }
 
-pub fn dist(v: Vec3, w: Vec3) -> f64 {
+pub fn dist(v: Vec3, w: Vec3) -> Float {
     vec3(v.x - w.x, v.y - w.y, v.z - w.z).length()
 }
 
-pub fn dot(v: Vec3, w: Vec3) -> f64 {
+pub fn dot(v: Vec3, w: Vec3) -> Float {
     v.x * w.x + v.y * w.y + v.z * w.z
 }
 
@@ -109,7 +111,7 @@ pub fn reflect(v: Vec3, n: Vec3) -> Vec3 {
     v - 2.0 * dot(v, n) * n
 }
 
-pub fn refract(v: Vec3, n: Vec3, eta_ratio: f64) -> Vec3 {
+pub fn refract(v: Vec3, n: Vec3, eta_ratio: Float) -> Vec3 {
     let uv = v.normalize();
     let dt = dot(uv, n);
     let discriminant = 1.0 - eta_ratio * eta_ratio * (1.0 - dt * dt);
@@ -160,24 +162,24 @@ impl Mul<Vec3> for Vec3 {
     }
 }
 
-impl Mul<f64> for Vec3 {
+impl Mul<Float> for Vec3 {
     type Output = Vec3;
 
-    fn mul(self, rhs: f64) -> Self::Output {
+    fn mul(self, rhs: Float) -> Self::Output {
         vec3(self.x * rhs, self.y * rhs, self.z * rhs)
     }
 }
 
-impl MulAssign<f64> for Vec3 {
-    fn mul_assign(&mut self, rhs: f64) {
+impl MulAssign<Float> for Vec3 {
+    fn mul_assign(&mut self, rhs: Float) {
         *self = *self * rhs;
     }
 }
 
-impl Div<f64> for Vec3 {
+impl Div<Float> for Vec3 {
     type Output = Vec3;
 
-    fn div(self, rhs: f64) -> Self::Output {
+    fn div(self, rhs: Float) -> Self::Output {
         if rhs == 0.0 {
             panic!("Tried to divide a Vec3 by 0")
         }
@@ -185,13 +187,13 @@ impl Div<f64> for Vec3 {
     }
 }
 
-impl DivAssign<f64> for Vec3 {
-    fn div_assign(&mut self, rhs: f64) {
+impl DivAssign<Float> for Vec3 {
+    fn div_assign(&mut self, rhs: Float) {
         *self = *self / rhs;
     }
 }
 
-impl Mul<Vec3> for f64 {
+impl Mul<Vec3> for Float {
     type Output = Vec3;
 
     fn mul(self, rhs: Vec3) -> Self::Output {
@@ -199,7 +201,7 @@ impl Mul<Vec3> for f64 {
     }
 }
 
-impl Div<Vec3> for f64 {
+impl Div<Vec3> for Float {
     type Output = Vec3;
 
     fn div(self, rhs: Vec3) -> Self::Output {
@@ -212,17 +214,17 @@ impl Div<Vec3> for f64 {
 
 impl Distribution<Vec3> for Standard {
     fn sample<R: Rng + ?Sized>(&self, rng: &mut R) -> Vec3 {
-        let x: f64 = rng.gen();
-        let y: f64 = rng.gen();
-        let z: f64 = rng.gen();
+        let x: Float = rng.gen();
+        let y: Float = rng.gen();
+        let z: Float = rng.gen();
         Vec3 { x, y, z }
     }
 }
 
 pub fn rand_in_cube<R: Rng>(rng: &mut R) -> Vec3 {
-    let x: f64 = rng.gen_range(-1.0..1.0);
-    let y: f64 = rng.gen_range(-1.0..1.0);
-    let z: f64 = rng.gen_range(-1.0..1.0);
+    let x: Float = rng.gen_range(-1.0..1.0);
+    let y: Float = rng.gen_range(-1.0..1.0);
+    let z: Float = rng.gen_range(-1.0..1.0);
     Vec3 { x, y, z }
 }
 
@@ -251,22 +253,22 @@ pub fn random_in_unit_disk<R: Rng>(rng: &mut R) -> Vec3 {
     }
 }
 
-pub fn rand_color<R: Rng>(rng: &mut R, range: std::ops::Range<f64>) -> Color {
-    let x: f64 = rng.gen_range(range.clone());
-    let y: f64 = rng.gen_range(range.clone());
-    let z: f64 = rng.gen_range(range);
+pub fn rand_color<R: Rng>(rng: &mut R, range: std::ops::Range<Float>) -> Color {
+    let x: Float = rng.gen_range(range.clone());
+    let y: Float = rng.gen_range(range.clone());
+    let z: Float = rng.gen_range(range);
     Color { x, y, z }
 }
 
-pub fn rand_point<R: Rng>(rng: &mut R, range: std::ops::Range<f64>) -> Color {
-    let x: f64 = rng.gen_range(range.clone());
-    let y: f64 = rng.gen_range(range.clone());
-    let z: f64 = rng.gen_range(range);
+pub fn rand_point<R: Rng>(rng: &mut R, range: std::ops::Range<Float>) -> Color {
+    let x: Float = rng.gen_range(range.clone());
+    let y: Float = rng.gen_range(range.clone());
+    let z: Float = rng.gen_range(range);
     Point3 { x, y, z }
 }
 
 impl std::ops::Index<u8> for Vec3 {
-    type Output = f64;
+    type Output = Float;
 
     fn index(&self, index: u8) -> &Self::Output {
         match index {
@@ -307,7 +309,7 @@ impl Axis {
 }
 
 impl std::ops::Index<Axis> for Vec3 {
-    type Output = f64;
+    type Output = Float;
 
     fn index(&self, index: Axis) -> &Self::Output {
         match index {
@@ -378,7 +380,7 @@ mod tests {
         assert_eq!(x, Vec3::new(2.0, 0.0, -2.0));
     }
     #[test]
-    fn test_mul_f64() {
+    fn test_mul_Float() {
         assert_eq!(Vec3::new(1.0, 0.0, -1.0) * 1.0, Vec3::new(1.0, 0.0, -1.0));
     }
     #[test]
@@ -399,14 +401,14 @@ mod tests {
 
     #[test]
     fn test_squared_length() {
-        assert_eq!(Vec3::new(1.0, 2.0, 3.0).length2(), 14.0 as f64);
+        assert_eq!(Vec3::new(1.0, 2.0, 3.0).length2(), 14.0 as Float);
     }
 
     #[test]
     fn test_length() {
         assert_eq!(
             Vec3::new(3.0, 4.0, 5.0).length(),
-            ((3.0 * 3.0 + 4.0 * 4.0 + 5.0 * 5.0) as f64).sqrt()
+            ((3.0 * 3.0 + 4.0 * 4.0 + 5.0 * 5.0) as Float).sqrt()
         );
     }
     #[test]

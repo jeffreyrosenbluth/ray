@@ -6,7 +6,7 @@ use std::sync::Arc;
 
 pub trait Material: Send + Sync {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
-    fn color_emitted(&self, _u: f64, _v: f64, _p: Point3) -> Color {
+    fn color_emitted(&self, _u: Float, _v: Float, _p: Point3) -> Color {
         BLACK
     }
 }
@@ -33,7 +33,7 @@ impl Lambertian<Color> {
     }
 }
 
-pub fn lambertian(r: f64, g: f64, b: f64) -> Arc<Lambertian<Color>> {
+pub fn lambertian(r: Float, g: Float, b: Float) -> Arc<Lambertian<Color>> {
     Arc::new(Lambertian::solid_color(color(r, g, b)))
 }
 
@@ -58,11 +58,11 @@ where
 }
 pub struct Metal {
     albedo: Color,
-    fuzz: f64,
+    fuzz: Float,
 }
 
 impl Metal {
-    pub fn new(albedo: Color, fuzz: f64) -> Metal {
+    pub fn new(albedo: Color, fuzz: Float) -> Metal {
         Metal { albedo, fuzz }
     }
 }
@@ -84,23 +84,23 @@ impl Material for Metal {
     }
 }
 
-pub fn metal(r: f64, g: f64, b: f64, fuzz: f64) -> Arc<Metal> {
+pub fn metal(r: Float, g: Float, b: Float, fuzz: Float) -> Arc<Metal> {
     Arc::new(Metal::new(color(r, g, b), fuzz))
 }
 
 pub struct Dielectric {
-    ir: f64,
+    ir: Float,
 }
 
 impl Dielectric {
-    pub fn new(index_of_refraction: f64) -> Dielectric {
+    pub fn new(index_of_refraction: Float) -> Dielectric {
         Dielectric {
             ir: index_of_refraction,
         }
     }
 }
 
-fn schlick(cosine: f64, ir: f64) -> f64 {
+fn schlick(cosine: Float, ir: Float) -> Float {
     let mut r0 = (1.0 - ir) / (1.0 + ir);
     r0 = r0 * r0;
     r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
@@ -119,7 +119,7 @@ impl Material for Dielectric {
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
         let cannot_refract = refraction_ratio * sin_theta > 1.0;
         let direction =
-            if cannot_refract || schlick(cos_theta, refraction_ratio) > thread_rng().gen::<f64>() {
+            if cannot_refract || schlick(cos_theta, refraction_ratio) > thread_rng().gen::<Float>() {
                 reflect(unit_direction, hit.normal)
             } else {
                 refract(unit_direction, hit.normal, refraction_ratio)
@@ -129,7 +129,7 @@ impl Material for Dielectric {
     }
 }
 
-pub fn dielectric(index_of_refraction: f64) -> Arc<Dielectric> {
+pub fn dielectric(index_of_refraction: Float) -> Arc<Dielectric> {
     Arc::new(Dielectric::new(index_of_refraction))
 }
 
@@ -154,12 +154,12 @@ where
         None
     }
 
-    fn color_emitted(&self, u: f64, v: f64, p: Point3) -> Color {
+    fn color_emitted(&self, u: Float, v: Float, p: Point3) -> Color {
         self.color.value(u, v, p)
     }
 }
 
-pub fn diffuse_light(r: f64, g: f64, b: f64) -> Arc<DiffuseLight<Color>> {
+pub fn diffuse_light(r: Float, g: Float, b: Float) -> Arc<DiffuseLight<Color>> {
     Arc::new(DiffuseLight::new(color(r, g, b)))
 }
 
@@ -187,6 +187,6 @@ where
     }
 }
 
-pub fn isotropic(r: f64, g: f64, b: f64) -> Arc<Isotropic<Color>> {
+pub fn isotropic(r: Float, g: Float, b: Float) -> Arc<Isotropic<Color>> {
     Arc::new(Isotropic::new(color(r, g, b)))
 }

@@ -7,13 +7,13 @@ use crate::object::*;
 pub struct Camera {
     pub origin: Point3,
     pub lookat: Point3,
-    pub aperture: f64,
+    pub aperture: Float,
     horizontal: Vec3,
     vertical: Vec3,
     lower_left_corner: Point3,
     u: Vec3,
     v: Vec3,
-    exposure: std::ops::Range<f64>,
+    exposure: std::ops::Range<Float>,
 }
 
 impl Camera {
@@ -21,11 +21,11 @@ impl Camera {
         origin: Point3,
         lookat: Point3,
         vup: Vec3,
-        vfov: f64,
-        aspect_ratio: f64,
-        aperture: f64,
-        focus_dist: f64,
-        exposure: std::ops::Range<f64>,
+        vfov: Float,
+        aspect_ratio: Float,
+        aperture: Float,
+        focus_dist: Float,
+        exposure: std::ops::Range<Float>,
     ) -> Self {
         let theta = degrees_to_radians(vfov);
         let viewport_height = 2.0 * (theta / 2.0).tan();
@@ -53,10 +53,10 @@ impl Camera {
     pub fn basic(
         origin: Point3,
         lookat: Point3,
-        vfov: f64,
-        aspect_ratio: f64,
-        aperture: f64,
-        focus_dist: f64,
+        vfov: Float,
+        aspect_ratio: Float,
+        aperture: Float,
+        focus_dist: Float,
     ) -> Self {
         Self::new(
             origin,
@@ -70,7 +70,7 @@ impl Camera {
         )
     }
 
-    pub fn get_ray(&self, s: f64, t: f64) -> Ray {
+    pub fn get_ray(&self, s: Float, t: Float) -> Ray {
         let mut rng = thread_rng();
         let rd = self.aperture / 2.0 * random_in_unit_disk(&mut rng);
         let offset = self.u * rd.x + self.v * rd.y;

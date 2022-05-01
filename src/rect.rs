@@ -6,22 +6,22 @@ use std::sync::Arc;
 
 pub struct Rect {
     pub axis: Axis,
-    pub p0: f64,
-    pub q0: f64,
-    pub p1: f64,
-    pub q1: f64,
-    pub k: f64,
+    pub p0: Float,
+    pub q0: Float,
+    pub p1: Float,
+    pub q1: Float,
+    pub k: Float,
     pub material: Arc<dyn Material>,
 }
 
 impl Rect {
     pub fn new(
         axis: Axis,
-        p0: f64,
-        q0: f64,
-        p1: f64,
-        q1: f64,
-        k: f64,
+        p0: Float,
+        q0: Float,
+        p1: Float,
+        q1: Float,
+        k: Float,
         material: Arc<dyn Material>,
     ) -> Self {
         Self {
@@ -37,7 +37,7 @@ impl Rect {
 }
 
 impl Object for Rect {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
         let (p, q, s) = self.axis.order();
         let t = (self.k - r.origin[s]) / r.direction[s];
         if t < t_min || t > t_max {
@@ -60,7 +60,7 @@ impl Object for Rect {
         Some(rec)
     }
 
-    fn bounding_box(&self, _time_range: &std::ops::Range<f64>) -> Option<crate::aabb::Aabb> {
+    fn bounding_box(&self, _time_range: &std::ops::Range<Float>) -> Option<crate::aabb::Aabb> {
         let (p, q, s) = self.axis.order();
         let mut a = ZERO;
         let mut b = ZERO;
@@ -149,11 +149,11 @@ impl Cuboid {
 }
 
 impl Object for Cuboid {
-    fn hit(&self, r: &Ray, t_min: f64, t_max: f64) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
         self.sides.hit(r, t_min, t_max)
     }
 
-    fn bounding_box(&self, _time_range: &std::ops::Range<f64>) -> Option<Aabb> {
+    fn bounding_box(&self, _time_range: &std::ops::Range<Float>) -> Option<Aabb> {
         Some(Aabb::new(self.box_min, self.box_max))
     }
 }
