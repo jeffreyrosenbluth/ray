@@ -61,7 +61,7 @@ impl Camera {
         Self::new(
             origin,
             lookat,
-            vec3(0.0, 1.0, 0.0),
+            vec3a(0.0, 1.0, 0.0),
             vfov,
             aspect_ratio,
             aperture,
@@ -88,7 +88,7 @@ impl Default for Camera {
         Camera::new(
             point3(0.0, 0.0, 1.0),
             point3(0.0, 0.0, 0.0),
-            vec3(0.0, 1.0, 0.0),
+            vec3a(0.0, 1.0, 0.0),
             45.0,
             16.0 / 9.0,
             0.0,

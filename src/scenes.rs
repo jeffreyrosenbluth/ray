@@ -118,7 +118,7 @@ pub fn cornell_box(smoke: bool) -> Environment {
     ));
     let box1 = Cuboid::new(ZERO, point3(165.0, 330.0, 165.0), aluminum);
     let box1 = Rotate::new(Axis::Y, box1, 15.0);
-    let box1 = Translate::new(box1, vec3(250.0, 0.0, 295.0));
+    let box1 = Translate::new(box1, vec3a(250.0, 0.0, 295.0));
     if smoke {
         objects.add(ConstantMedium::new(box1, BLACK, 0.01));
     } else {
@@ -128,7 +128,7 @@ pub fn cornell_box(smoke: bool) -> Environment {
     // let box2 = Cuboid::new(ZERO, point3(165.0, 165.0, 165.0), white.clone());
     // let box2 = Rotate::new(Axis::Y, box2, -18.0);
     // let box2 = Rotate::new(Axis::X, box2, 15.0);
-    // let box2 = Translate::new(box2, vec3(130.0, 0.0, 65.0));
+    // let box2 = Translate::new(box2, vec3a(130.0, 0.0, 65.0));
     // if smoke {
     //     objects.add(ConstantMedium::new(box2, WHITE, 0.01));
     // } else {
@@ -176,7 +176,7 @@ pub fn book2_final_scene() -> Environment {
     objects.add(Rect::new(Axis::Y, 123.0, 147.0, 423.0, 412.0, 554.0, light));
 
     let center1 = point3(400.0, 400.0, 200.0);
-    let center2 = center1 + vec3(30.0, 0.0, 0.0);
+    let center2 = center1 + vec3a(30.0, 0.0, 0.0);
     let moving_sphere_material = lambertian(0.7, 0.3, 0.1);
     objects.add(Sphere::new_moving(
         center1,
@@ -223,13 +223,13 @@ pub fn book2_final_scene() -> Environment {
 
     objects.add(Translate::new(
         Rotate::new(Axis::Y, BvhNode::new(&mut boxes2, 0, ns, 0.0..1.0), 15.0),
-        vec3(-100.0, 270.0, 395.0),
+        vec3a(-100.0, 270.0, 395.0),
     ));
 
     let camera = Camera::new(
         point3(478.0, 278.0, -600.0),
         point3(278.0, 278.0, 0.0),
-        vec3(0.0, 1.0, 0.0),
+        vec3a(0.0, 1.0, 0.0),
         40.0,
         1.0,
         0.0,
@@ -244,8 +244,8 @@ pub fn marbles_scene() -> Environment {
     let mut rng = rand::thread_rng();
     let mut world = Objects::new(Vec::new());
     let checker = lambertian_texture(CheckeredTexture::with_color(
-        vec3(0.3, 0.3, 0.3),
-        vec3(0.9, 0.9, 0.9),
+        vec3a(0.3, 0.3, 0.3),
+        vec3a(0.9, 0.9, 0.9),
     ));
     let ground_sphere = Sphere::new(Point3::new(0.0, -1000.0, 0.0), 1000.0, checker);
     world.add(ground_sphere);
@@ -268,7 +268,7 @@ pub fn marbles_scene() -> Environment {
                 // Diffuse
                 let albedo = rand_color(&mut rng, 0.0..1.0) * rand_color(&mut rng, 0.0..1.0);
                 let sphere_mat = Arc::new(Lambertian::solid_color(albedo));
-                let _center2 = center + vec3(0.0, rng.gen_range(0.0..0.5), 0.0);
+                let _center2 = center + vec3a(0.0, rng.gen_range(0.0..0.5), 0.0);
                 let sphere = Sphere::new(center, 0.2, sphere_mat);
 
                 marbles.add(sphere);

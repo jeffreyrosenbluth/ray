@@ -11,3 +11,4 @@ rand = "0.8.5"
 rayon = "1.5"
 noise = { git = "https://github.com/Razaekel/noise-rs.git", branch = "develop" }
 image = "0.24"
+glam = "0.20"

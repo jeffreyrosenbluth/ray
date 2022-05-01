@@ -61,9 +61,9 @@ pub fn sphere_uv(p: Point3) -> (Float, Float) {
 impl Object for Sphere {
     fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
         let oc = r.origin - self.center(r.time);
-        let a = r.direction.length2();
+        let a = r.direction.length_squared();
         let half_b = dot(oc, r.direction);
-        let c = oc.length2() - self.radius * self.radius;
+        let c = oc.length_squared() - self.radius * self.radius;
 
         let discriminant = half_b * half_b - a * c;
         if discriminant < 0.0 {
@@ -88,12 +88,12 @@ impl Object for Sphere {
 
     fn bounding_box(&self, time_range: &Range<Float>) -> Option<crate::aabb::Aabb> {
         let box0 = Aabb::new(
-            self.center(self.time_range.start) - vec3(self.radius, self.radius, self.radius),
-            self.center(time_range.start) + vec3(self.radius, self.radius, self.radius),
+            self.center(self.time_range.start) - vec3a(self.radius, self.radius, self.radius),
+            self.center(time_range.start) + vec3a(self.radius, self.radius, self.radius),
         );
         let box1 = Aabb::new(
-            self.center(self.time_range.end) - vec3(self.radius, self.radius, self.radius),
-            self.center(time_range.end) + vec3(self.radius, self.radius, self.radius),
+            self.center(self.time_range.end) - vec3a(self.radius, self.radius, self.radius),
+            self.center(time_range.end) + vec3a(self.radius, self.radius, self.radius),
         );
 
         Some(surrounding_box(box0, box1))

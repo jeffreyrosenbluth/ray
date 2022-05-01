@@ -52,9 +52,9 @@ impl Object for Rect {
         let v = (y - self.q0) / (self.q1 - self.q0);
         let pt = r.at(t);
         let outward_normal = match self.axis {
-            Axis::X => vec3(1.0, 0.0, 0.0),
-            Axis::Y => vec3(0.0, 1.0, 0.0),
-            Axis::Z => vec3(0.0, 0.0, 1.0),
+            Axis::X => vec3a(1.0, 0.0, 0.0),
+            Axis::Y => vec3a(0.0, 1.0, 0.0),
+            Axis::Z => vec3a(0.0, 0.0, 1.0),
         };
         let rec = HitRecord::with_ray(r, pt, outward_normal, self.material.clone(), t, u, v);
         Some(rec)

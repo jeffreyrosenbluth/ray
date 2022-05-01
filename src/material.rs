@@ -48,7 +48,7 @@ where
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
         let mut rng = thread_rng();
         let mut scatter_direction = rec.normal + random_unit_vector(&mut rng);
-        if scatter_direction.near_zero() {
+        if near_zero(scatter_direction) {
             // Catch degenerate scatter direction
             scatter_direction = rec.normal;
         }

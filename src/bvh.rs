@@ -55,8 +55,8 @@ impl BvhNode {
     fn comparator(x: &dyn Object, y: &dyn Object, axis: u8) -> Ordering {
         let box_x = x.bounding_box(&(0.0..0.0)).unwrap();
         let box_y = y.bounding_box(&(0.0..0.0)).unwrap();
-        let x = box_x.box_min[axis];
-        let y = box_y.box_min[axis];
+        let x = box_x.box_min[axis as usize];
+        let y = box_y.box_min[axis as usize];
         if x < y {
             Ordering::Less
         } else if x > y {

@@ -217,12 +217,12 @@ where
                         let y = j as Float * b.box_max.y + (1.0 - j as Float) * b.box_min.y;
                         let z = k as Float * b.box_max.z + (1.0 - k as Float) * b.box_min.z;
                         let coords = vec3(x, y, z);
-                        let newp = cos * coords[p] + sin * coords[q];
-                        let newq = -sin * coords[p] + cos * coords[q];
+                        let newp = cos * coords[p as usize] + sin * coords[q as usize];
+                        let newq = -sin * coords[p as usize] + cos * coords[q as usize];
                         let mut tester = ZERO;
                         tester[p] = newp;
                         tester[q] = newq;
-                        tester[s] = coords[s];
+                        tester[s] = coords[s as usize];
                         for c in 0..3 {
                             rect.box_min[c] = rect.box_min[c].min(tester[c]);
                             rect.box_max[c] = rect.box_max[c].min(tester[c]);
@@ -313,7 +313,7 @@ where
         let t = rec1.t + hit_distance / ray_length;
         Some(HitRecord::new(
             r.at(t),
-            vec3(1.0, 0.0, 0.0), // arbitrary
+            vec3a(1.0, 0.0, 0.0), // arbitrary
             Arc::new(self.phase_function.clone()),
             t,
             1.0,

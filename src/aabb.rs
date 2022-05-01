@@ -1,5 +1,8 @@
+use glam::const_vec3;
+
 use crate::geom::*;
 use crate::object::Ray;
+use glam::const_vec3a;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Aabb {
@@ -13,16 +16,8 @@ impl Aabb {
     }
 
     pub const EMPTY: Self = Aabb {
-        box_min: Vec3 {
-            x: Float::MAX,
-            y: Float::MAX,
-            z: Float::MAX,
-        },
-        box_max: Vec3 {
-            x: Float::MIN,
-            y: Float::MIN,
-            z: Float::MIN,
-        },
+        box_min: const_vec3a!([Float::MAX, Float::MAX, Float::MAX]),
+        box_max: const_vec3a!([Float::MIN, Float::MIN, Float::MIN]),
     };
 
     pub fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> bool {
