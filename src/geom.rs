@@ -253,6 +253,18 @@ pub fn random_in_unit_disk<R: Rng>(rng: &mut R) -> Vec3 {
     }
 }
 
+pub fn random_cosine_direction<R: Rng>(rng: &mut R) -> Vec3 {
+    let r1: f32 = rng.gen();
+    let r2: f32 = rng.gen();
+    let z = (1.0 - r2).sqrt();
+
+    let phi = 2.0 * PI * r1;
+    let x = phi.cos() * r2.sqrt();
+    let y = phi.sin() * r2.sqrt();
+
+    vec3(x, y, z)
+}
+
 pub fn rand_color<R: Rng>(rng: &mut R, range: std::ops::Range<Float>) -> Color {
     let x: Float = rng.gen_range(range.clone());
     let y: Float = rng.gen_range(range.clone());
@@ -331,6 +343,36 @@ impl std::ops::IndexMut<Axis> for Vec3 {
         }
     }
 }
+
+#[derive(Debug, Clone, Copy)]
+pub struct Onb {
+    pub u: Vec3,
+    pub v: Vec3,
+    pub w: Vec3,
+}
+
+impl Onb {
+    pub fn new(u: Vec3, v: Vec3, w: Vec3) -> Self {
+        Self { u, v, w }
+    }
+
+    pub fn local(&self, a: Vec3) -> Vec3 {
+        a.x * self.u + a.y * self.v + a.z * self.w
+    }
+
+    pub fn build_from_w(n: Vec3) -> Self {
+        let w = n.normalize();
+        let a = if w.x.abs() > 0.9 {
+            vec3(0.0, 1.0, 0.0)
+        } else {
+            vec3(1.0, 0.0, 0.0)
+        };
+        let v = cross(w, a).normalize();
+        let u = cross(w, v);
+        Self { u, v, w }
+    }
+}
+
 #[cfg(test)]
 mod tests {
     use super::*;

@@ -97,6 +97,12 @@ impl HitRecord {
 pub trait Object: Send + Sync {
     fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord>;
     fn bounding_box(&self, time_range: &Range<Float>) -> Option<Aabb>;
+    fn pdf_value(&self, _o: Vec3, _v: Vec3) -> Float {
+        0.0
+    }
+    fn random(&self, _o: Vec3) -> Vec3 {
+        vec3(1.0, 0.0, 0.0)
+    }
 }
 
 pub struct Objects {
@@ -153,9 +159,37 @@ impl Object for Objects {
     }
 }
 
+pub struct FlipFace<T> {
+    pub object: T,
+}
+
+impl<T> FlipFace<T> {
+    pub fn new(object: T) -> Self {
+        Self { object }
+    }
+}
+
 pub struct Translate<T> {
     pub object: T,
     pub offset: Vec3,
+}
+
+impl<T> Object for FlipFace<T>
+where
+    T: Object,
+{
+    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
+        if let Some(mut rec) = self.object.hit(r, t_min, t_max) {
+            rec.front_face = !rec.front_face;
+            Some(rec)
+        } else {
+            None
+        }
+    }
+
+    fn bounding_box(&self, time_range: &Range<Float>) -> Option<Aabb> {
+        self.object.bounding_box(time_range)
+    }
 }
 
 impl<T> Translate<T> {
@@ -290,39 +324,39 @@ impl<O> ConstantMedium<O> {
     }
 }
 
-impl<O> Object for ConstantMedium<O>
-where
-    O: Object,
-{
-    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
-        let mut rng = thread_rng();
-        let mut rec1 = self.boundary.hit(r, Float::MIN, Float::MAX)?;
-        let mut rec2 = self.boundary.hit(r, rec1.t + 0.0001, Float::MAX)?;
-        rec1.t = rec1.t.max(t_min);
-        rec2.t = rec2.t.min(t_max);
-        if rec1.t >= rec2.t {
-            return None;
-        }
-        rec1.t = rec1.t.max(0.0);
-        let ray_length = r.direction.length();
-        let distance_inside_boundary = (rec2.t - rec1.t) * ray_length;
-        let hit_distance = self.neg_inv_density * rng.gen::<Float>().ln();
-        if hit_distance > distance_inside_boundary {
-            return None;
-        }
-        let t = rec1.t + hit_distance / ray_length;
-        Some(HitRecord::new(
-            r.at(t),
-            vec3(1.0, 0.0, 0.0), // arbitrary
-            Arc::new(self.phase_function.clone()),
-            t,
-            1.0,
-            1.0,
-            true, // arbitrary
-        ))
-    }
+// impl<O> Object for ConstantMedium<O>
+// where
+//     O: Object,
+// {
+//     fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
+//         let mut rng = thread_rng();
+//         let mut rec1 = self.boundary.hit(r, Float::MIN, Float::MAX)?;
+//         let mut rec2 = self.boundary.hit(r, rec1.t + 0.0001, Float::MAX)?;
+//         rec1.t = rec1.t.max(t_min);
+//         rec2.t = rec2.t.min(t_max);
+//         if rec1.t >= rec2.t {
+//             return None;
+//         }
+//         rec1.t = rec1.t.max(0.0);
+//         let ray_length = r.direction.length();
+//         let distance_inside_boundary = (rec2.t - rec1.t) * ray_length;
+//         let hit_distance = self.neg_inv_density * rng.gen::<Float>().ln();
+//         if hit_distance > distance_inside_boundary {
+//             return None;
+//         }
+//         let t = rec1.t + hit_distance / ray_length;
+//         Some(HitRecord::new(
+//             r.at(t),
+//             vec3(1.0, 0.0, 0.0), // arbitrary
+//             Arc::new(self.phase_function.clone()),
+//             t,
+//             1.0,
+//             1.0,
+//             true, // arbitrary
+//         ))
+//     }
 
-    fn bounding_box(&self, time_range: &std::ops::Range<Float>) -> Option<crate::aabb::Aabb> {
-        self.boundary.bounding_box(time_range)
-    }
-}
+//     fn bounding_box(&self, time_range: &std::ops::Range<Float>) -> Option<crate::aabb::Aabb> {
+//         self.boundary.bounding_box(time_range)
+//     }
+// }

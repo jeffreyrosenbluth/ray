@@ -1,17 +1,41 @@
 use crate::geom::*;
 use crate::object::{Object, Ray};
+use crate::pdf::*;
 use crate::scenes::Environment;
-use rayon::prelude::*;
 use rand::prelude::*;
+use rayon::prelude::*;
+use std::sync::Arc;
 
-pub fn ray_color(r: &Ray, background: Color, world: &impl Object, depth: u32) -> Color {
+pub fn ray_color(
+    r: &Ray,
+    background: Color,
+    world: &impl Object,
+    lights: Arc<dyn Object>,
+    depth: u32,
+) -> Color {
     if depth == 0 {
         return BLACK;
     }
     if let Some(rec) = world.hit(r, 0.001, INFINITY) {
-        let emitted = rec.material.color_emitted(rec.u, rec.v, rec.p);
-        if let Some((attenuation, scattered)) = rec.material.scatter(r, &rec) {
-            emitted + attenuation * ray_color(&scattered, background, world, depth - 1)
+        /*auto p0 = make_shared<hittable_pdf>(lights, rec.p);
+    auto p1 = make_shared<cosine_pdf>(rec.normal);
+    mixture_pdf mixed_pdf(p0, p1);
+
+    scattered = ray(rec.p, mixed_pdf.generate(), r.time());
+    pdf_val = mixed_pdf.value(scattered.direction()); */
+        let emitted = rec.material.color_emitted(&rec, rec.u, rec.v, rec.p);
+        let pdf0 = Arc::new(ObjectPdf::new(lights.clone(), rec.p));
+        let pdf1 = Arc::new(CosinePdf::with_w(rec.normal));
+        let mixture_pdf = MixturePdf::new(pdf0, pdf1);
+        let scattered = Ray::new(rec.p, mixture_pdf.generate(), r.time);
+        let pdf_val = mixture_pdf.value(scattered.direction);
+
+        if let Some((attenuation, _scattered, _pdf)) = rec.material.scatter(r, &rec) {
+            emitted
+                + attenuation
+                    * rec.material.scattering_pdf(r, &rec, &scattered)
+                    * ray_color(&scattered, background, world, lights, depth - 1)
+                    / pdf_val
         } else {
             emitted
         }
@@ -60,6 +84,7 @@ pub fn render(environment: &Environment) -> Vec<u8> {
                         &r,
                         environment.background(),
                         &environment.scene,
+                        environment.lights.clone(),
                         environment.max_depth(),
                     );
                 }
