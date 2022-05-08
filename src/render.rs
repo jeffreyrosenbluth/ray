@@ -1,9 +1,12 @@
 use crate::geom::*;
+use crate::material::Reflection;
 use crate::object::{Object, Ray};
 use crate::pdf::*;
 use crate::scenes::Environment;
+use noise::ScaleBias;
 use rand::prelude::*;
 use rayon::prelude::*;
+use std::cell::Ref;
 use std::sync::Arc;
 
 pub fn ray_color(
@@ -17,25 +20,23 @@ pub fn ray_color(
         return BLACK;
     }
     if let Some(rec) = world.hit(r, 0.001, INFINITY) {
-        /*auto p0 = make_shared<hittable_pdf>(lights, rec.p);
-    auto p1 = make_shared<cosine_pdf>(rec.normal);
-    mixture_pdf mixed_pdf(p0, p1);
-
-    scattered = ray(rec.p, mixed_pdf.generate(), r.time());
-    pdf_val = mixed_pdf.value(scattered.direction()); */
         let emitted = rec.material.color_emitted(&rec, rec.u, rec.v, rec.p);
-        let pdf0 = Arc::new(ObjectPdf::new(lights.clone(), rec.p));
-        let pdf1 = Arc::new(CosinePdf::with_w(rec.normal));
-        let mixture_pdf = MixturePdf::new(pdf0, pdf1);
-        let scattered = Ray::new(rec.p, mixture_pdf.generate(), r.time);
-        let pdf_val = mixture_pdf.value(scattered.direction);
-
-        if let Some((attenuation, _scattered, _pdf)) = rec.material.scatter(r, &rec) {
-            emitted
-                + attenuation
-                    * rec.material.scattering_pdf(r, &rec, &scattered)
-                    * ray_color(&scattered, background, world, lights, depth - 1)
-                    / pdf_val
+        if let Some(scatter_rec) = rec.material.scatter(r, &rec) {
+            match scatter_rec.reflection {
+                Reflection::Scatter(pdf1) => {
+                    let pdf0 = Arc::new(ObjectPdf::new(lights.clone(), rec.p));
+                    let mixture_pdf = MixturePdf::new(pdf0, pdf1);
+                    let scattered = Ray::new(rec.p, mixture_pdf.generate(), r.time);
+                    let pdf_val = mixture_pdf.value(scattered.direction);
+                    emitted
+                        + scatter_rec.attenuation
+                            * rec.material.scattering_pdf(r, &rec, &scattered)
+                            * ray_color(&scattered, background, world, lights, depth - 1)
+                            / pdf_val
+                }
+                Reflection::Specular(ray) => scatter_rec.attenuation
+                * ray_color(&ray, background, world, lights, depth-1)
+            }
         } else {
             emitted
         }
@@ -48,6 +49,10 @@ fn write_color(data: &mut Vec<u8>, pixel_color: Color, samples_per_pixel: u32) {
     let mut r = pixel_color.x;
     let mut g = pixel_color.y;
     let mut b = pixel_color.z;
+
+    if r.is_nan() {r = 0.0};
+    if g.is_nan() {g = 0.0};
+    if b.is_nan() {b = 0.0};
 
     // Divide the color by the number of samples.
     let scale = 1.0 / samples_per_pixel as Float;

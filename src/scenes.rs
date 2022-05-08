@@ -84,24 +84,19 @@ impl Environment {
         self.params.max_depth
     }
 }
-pub fn cornell_box_temp(smoke: bool) -> Environment {
+
+pub fn cornell_box(smoke: bool) -> Environment {
     let mut objects = Objects::new(Vec::new());
     let red = lambertian(0.65, 0.05, 0.05);
     let white = lambertian(0.73, 0.73, 0.73);
     let green = lambertian(0.12, 0.45, 0.15);
     let light = diffuse_light(15.0, 15.0, 15.0);
-    let light2 = diffuse_light(15.0, 15.0, 15.0);
+    let aluminum = metal(0.8, 0.85, 0.88, 0.0);
+    let glass = dielectric(1.5);
     objects.add(Rect::new(Axis::X, 0.0, 0.0, 555.0, 555.0, 555.0, green));
     objects.add(Rect::new(Axis::X, 0.0, 0.0, 555.0, 555.0, 0.0, red));
-    objects.add(FlipFace::new(Rect::new(
-        Axis::Y,
-        213.0,
-        227.0,
-        343.0,
-        332.0,
-        554.0,
-        light,
-    )));
+    let light_rect = Rect::new(Axis::Y, 213.0, 227.0, 343.0, 332.0, 554.0, light.clone());
+    objects.add(FlipFace::new(light_rect.clone()));
     objects.add(Rect::new(
         Axis::Y,
         0.0,
@@ -129,7 +124,7 @@ pub fn cornell_box_temp(smoke: bool) -> Environment {
         555.0,
         white.clone(),
     ));
-    let box1 = Cuboid::new(ZERO, point3(165.0, 330.0, 165.0), white.clone());
+    let box1 = Cuboid::new(ZERO, point3(165.0, 330.0, 165.0), aluminum);
     let box1 = Rotate::new(Axis::Y, box1, 15.0);
     let box1 = Translate::new(box1, vec3(250.0, 0.0, 295.0));
     if smoke {
@@ -137,15 +132,16 @@ pub fn cornell_box_temp(smoke: bool) -> Environment {
     } else {
         objects.add(box1);
     }
-    let box2 = Cuboid::new(ZERO, point3(165.0, 165.0, 165.0), white.clone());
-    let box2 = Rotate::new(Axis::Y, box2, -18.0);
+    objects.add(Sphere::new(point3(190.0, 90.0, 190.0), 90.0, glass));
+    // let box2 = Cuboid::new(ZERO, point3(165.0, 165.0, 165.0), white.clone());
+    // let box2 = Rotate::new(Axis::Y, box2, -18.0);
     // let box2 = Rotate::new(Axis::X, box2, 15.0);
-    let box2 = Translate::new(box2, vec3(130.0, 0.0, 65.0));
-    if smoke {
-        // objects.add(ConstantMedium::new(box2, WHITE, 0.01));
-    } else {
-        objects.add(box2);
-    }
+    // let box2 = Translate::new(box2, vec3(130.0, 0.0, 65.0));
+    // if smoke {
+    //     objects.add(ConstantMedium::new(box2, WHITE, 0.01));
+    // } else {
+    //     objects.add(box2);
+    // }
 
     let camera = Camera::basic(
         point3(278.0, 278.0, -800.0),
@@ -155,79 +151,13 @@ pub fn cornell_box_temp(smoke: bool) -> Environment {
         0.0,
         10.0,
     );
-    let rparams = RenderParams::new(BLACK, 1.0, 600, 500, 50);
-    let lights = Arc::new(Rect::new(Axis::Y, 213.0, 227.0, 343.0, 332.0, 554.0, light2));
-    Environment::new(Box::new(objects), camera, lights, rparams)
+    let rparams = RenderParams::new(BLACK, 1.0, 600, 1000, 50);
+    let mut lights = Objects::new(Vec::new());
+    let light3 = Sphere::new(point3(190.0, 90.0, 190.0), 90., light);
+    lights.add(light_rect);
+    lights.add(light3);
+    Environment::new(Box::new(objects), camera, Arc::new(lights), rparams)
 }
-
-// pub fn cornell_box(smoke: bool) -> Environment {
-//     let mut objects = Objects::new(Vec::new());
-//     let red = lambertian(0.65, 0.05, 0.05);
-//     let white = lambertian(0.73, 0.73, 0.73);
-//     let green = lambertian(0.12, 0.45, 0.15);
-//     let light = diffuse_light(7.0, 7.0, 7.0);
-//     let aluminum = metal(0.8, 0.85, 0.88, 0.0);
-//     let glass = dielectric(1.5);
-//     objects.add(Rect::new(Axis::X, 0.0, 0.0, 555.0, 555.0, 555.0, green));
-//     objects.add(Rect::new(Axis::X, 0.0, 0.0, 555.0, 555.0, 0.0, red));
-//     objects.add(Rect::new(Axis::Y, 163.0, 177.0, 393.0, 392.0, 554.0, light));
-//     objects.add(Rect::new(
-//         Axis::Y,
-//         0.0,
-//         0.0,
-//         555.0,
-//         555.0,
-//         0.0,
-//         white.clone(),
-//     ));
-//     objects.add(Rect::new(
-//         Axis::Y,
-//         0.0,
-//         0.0,
-//         555.0,
-//         555.0,
-//         555.0,
-//         white.clone(),
-//     ));
-//     objects.add(Rect::new(
-//         Axis::Z,
-//         0.0,
-//         0.0,
-//         555.0,
-//         555.0,
-//         555.0,
-//         white.clone(),
-//     ));
-//     let box1 = Cuboid::new(ZERO, point3(165.0, 330.0, 165.0), aluminum);
-//     let box1 = Rotate::new(Axis::Y, box1, 15.0);
-//     let box1 = Translate::new(box1, vec3(250.0, 0.0, 295.0));
-//     if smoke {
-//         objects.add(ConstantMedium::new(box1, BLACK, 0.01));
-//     } else {
-//         objects.add(box1);
-//     }
-//     objects.add(Sphere::new(point3(190.0 ,90.0 , 190.0), 90.0 , glass));
-//     // let box2 = Cuboid::new(ZERO, point3(165.0, 165.0, 165.0), white.clone());
-//     // let box2 = Rotate::new(Axis::Y, box2, -18.0);
-//     // let box2 = Rotate::new(Axis::X, box2, 15.0);
-//     // let box2 = Translate::new(box2, vec3(130.0, 0.0, 65.0));
-//     // if smoke {
-//     //     objects.add(ConstantMedium::new(box2, WHITE, 0.01));
-//     // } else {
-//     //     objects.add(box2);
-//     // }
-
-//     let camera = Camera::basic(
-//         point3(278.0, 278.0, -800.0),
-//         point3(278.0, 278.0, 0.0),
-//         40.0,
-//         1.0,
-//         0.0,
-//         10.0,
-//     );
-//     let rparams = RenderParams::new(BLACK, 1.0, 600, 800, 50);
-//     Environment::new(Box::new(objects), camera, rparams)
-// }
 
 // pub fn book2_final_scene() -> Environment {
 //     let mut objects = Objects::new(Vec::new());

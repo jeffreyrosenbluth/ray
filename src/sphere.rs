@@ -5,6 +5,7 @@ use crate::object::*;
 use std::f32::consts::PI;
 use std::ops::Range;
 use std::sync::Arc;
+use rand::prelude::*;
 
 pub struct Sphere {
     pub center0: Point3,
@@ -98,4 +99,32 @@ impl Object for Sphere {
 
         Some(surrounding_box(box0, box1))
     }
+
+    fn pdf_value(&self, o: Vec3, v: Vec3) -> Float {
+        if let Some(_hit) = self.hit(&Ray::new(o, v, 0.0), 0.001, f32::MAX) {
+            let cos_theta_max = (1.0 - self.radius.powi(2) / (self.center0 - o).length2()).sqrt();
+            let solid_angle = 2.0 * PI * (1.0 - cos_theta_max);
+            1.0 / solid_angle
+        } else {
+            0.0
+        }
+    }
+
+    fn random(&self, o: Vec3) -> Vec3 {
+        let direction = self.center0 - o;
+        let distance_squared = direction.length2();
+        let uvw = Onb::build_from_w(direction);
+        uvw.local(random_to_sphere(self.radius, distance_squared))
+    }
+}
+
+fn random_to_sphere(radius: f32, distance_squared: f32) -> Vec3 {
+    let mut rng = rand::thread_rng();
+    let r1: Float = rng.gen();
+    let r2: Float = rng.gen();
+    let z = 1.0 + r2 * ((1.0 - radius.powi(2) / distance_squared).sqrt() - 1.0);
+    let phi = 2.0 * PI * r1;
+    let x = phi.cos() * (1.0 - z * z).sqrt();
+    let y = phi.sin() * (1.0 - z * z).sqrt();
+    Vec3::new(x, y, z)
 }

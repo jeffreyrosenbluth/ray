@@ -7,6 +7,7 @@ use crate::material::*;
 use crate::object::*;
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct Rect {
     pub axis: Axis,
     pub p0: Float,

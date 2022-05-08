@@ -97,9 +97,7 @@ impl HitRecord {
 pub trait Object: Send + Sync {
     fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord>;
     fn bounding_box(&self, time_range: &Range<Float>) -> Option<Aabb>;
-    fn pdf_value(&self, _o: Vec3, _v: Vec3) -> Float {
-        0.0
-    }
+    fn pdf_value(&self, _o: Vec3, _v: Vec3) -> Float { 0.0 }
     fn random(&self, _o: Vec3) -> Vec3 {
         vec3(1.0, 0.0, 0.0)
     }
@@ -131,6 +129,14 @@ impl Object for Box<dyn Object> {
     fn bounding_box(&self, time_range: &Range<Float>) -> Option<Aabb> {
         self.as_ref().bounding_box(time_range)
     }
+
+    fn pdf_value(&self, o: Vec3, v: Vec3) -> Float {
+        (**self).pdf_value(o, v)
+    }
+
+    fn random(&self, o: Vec3) -> Vec3 {
+        (**self).random(o)
+    }
 }
 
 impl Object for Objects {
@@ -157,8 +163,21 @@ impl Object for Objects {
         });
         aabb
     }
+
+    fn pdf_value(&self, o: Vec3, v: Vec3) -> Float {
+        self.objects
+            .iter()
+            .map(|h| h.pdf_value(o, v))
+            .sum::<Float>()
+            / self.objects.len() as f32
+    }
+
+    fn random(&self, o: Vec3) -> Vec3 {
+        self.objects.choose(&mut rand::thread_rng()).unwrap().random(o)
+    }
 }
 
+#[derive(Clone)]
 pub struct FlipFace<T> {
     pub object: T,
 }
