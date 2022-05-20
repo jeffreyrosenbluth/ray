@@ -1,15 +1,53 @@
 use crate::geom::*;
 use crate::object::*;
+use crate::pdf::*;
 use crate::texture::*;
-use rand::prelude::*;
+use rand::rngs::SmallRng;
+use rand::{thread_rng, Rng, SeedableRng};
 use std::sync::Arc;
 
+#[derive(Clone)]
+pub enum Reflection {
+    Specular(Ray),
+    Scatter(Arc<dyn Pdf>),
+}
+
+pub struct Scatter {
+    pub reflection: Reflection,
+    pub attenuation: Color,
+}
+
+impl Scatter {
+    pub fn new(reflection: Reflection, attenuation: Color) -> Self {
+        Self {
+            reflection,
+            attenuation,
+        }
+    }
+
+    pub fn specular(ray: Ray, attenuation: Color) -> Self {
+        let reflection = Reflection::Specular(ray);
+        Scatter::new(reflection, attenuation)
+    }
+
+    pub fn scatter(pdf: Arc<dyn Pdf>, attenuation: Color) -> Self {
+        let reflection = Reflection::Scatter(pdf);
+        Scatter::new(reflection, attenuation)
+    }
+}
+
 pub trait Material: Send + Sync {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)>;
-    fn color_emitted(&self, _u: Float, _v: Float, _p: Point3) -> Color {
+    fn scatter(&self, _r_in: &Ray, _rec: &HitRecord) -> Option<Scatter> {
+        None
+    }
+    fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> Float {
+        0.0
+    }
+    fn color_emitted(&self, _rec: &HitRecord, _u: Float, _v: Float, _p: Point3) -> Color {
         BLACK
     }
 }
+
 pub struct Lambertian<T> {
     albedo: Arc<T>,
 }
@@ -45,17 +83,19 @@ impl<T> Material for Lambertian<T>
 where
     T: Texture,
 {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
-        let mut rng = thread_rng();
-        let mut scatter_direction = rec.normal + random_unit_vector(&mut rng);
-        if scatter_direction.near_zero() {
-            // Catch degenerate scatter direction
-            scatter_direction = rec.normal;
-        }
-        let scattered = Ray::new(rec.p, scatter_direction, r_in.time);
-        Some((self.albedo.value(rec.u, rec.v, rec.p), scattered))
+    fn scatter(&self, _r_in: &Ray, rec: &HitRecord) -> Option<Scatter> {
+        Some(Scatter::scatter(
+            Arc::new(CosinePdf::with_w(rec.normal)),
+            self.albedo.value(rec.u, rec.v, rec.p),
+        ))
+    }
+
+    fn scattering_pdf(&self, _r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> Float {
+        let cosine = dot(rec.normal, scattered.direction.normalize()).max(0.0);
+        cosine / PI
     }
 }
+
 pub struct Metal {
     albedo: Color,
     fuzz: Float,
@@ -63,24 +103,21 @@ pub struct Metal {
 
 impl Metal {
     pub fn new(albedo: Color, fuzz: Float) -> Metal {
+        let fuzz = fuzz.min(1.0);
         Metal { albedo, fuzz }
     }
 }
 
 impl Material for Metal {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
-        let mut rng = thread_rng();
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<Scatter> {
+        let mut rng = SmallRng::from_rng(thread_rng()).unwrap();
         let reflected = reflect(r_in.direction.normalize(), rec.normal);
         let scattered = Ray::new(
             rec.p,
             reflected + self.fuzz * random_in_unit_sphere(&mut rng),
             r_in.time,
         );
-        if dot(scattered.direction, rec.normal) > 0.0 {
-            Some((self.albedo, scattered))
-        } else {
-            None
-        }
+        Some(Scatter::specular(scattered, self.albedo))
     }
 }
 
@@ -107,7 +144,7 @@ fn schlick(cosine: Float, ir: Float) -> Float {
 }
 
 impl Material for Dielectric {
-    fn scatter(&self, r_in: &Ray, hit: &HitRecord) -> Option<(Color, Ray)> {
+    fn scatter(&self, r_in: &Ray, hit: &HitRecord) -> Option<Scatter> {
         let attenuation = WHITE;
         let refraction_ratio = if hit.front_face {
             1.0 / self.ir
@@ -118,14 +155,14 @@ impl Material for Dielectric {
         let cos_theta = dot(-unit_direction, hit.normal).min(1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
         let cannot_refract = refraction_ratio * sin_theta > 1.0;
-        let direction =
-            if cannot_refract || schlick(cos_theta, refraction_ratio) > thread_rng().gen::<Float>() {
-                reflect(unit_direction, hit.normal)
-            } else {
-                refract(unit_direction, hit.normal, refraction_ratio)
-            };
+        let rn: Float = SmallRng::from_rng(thread_rng()).unwrap().gen();
+        let direction = if cannot_refract || schlick(cos_theta, refraction_ratio) > rn {
+            reflect(unit_direction, hit.normal)
+        } else {
+            refract(unit_direction, hit.normal, refraction_ratio)
+        };
         let scattered = Ray::new(hit.p, direction, r_in.time);
-        Some((attenuation, scattered))
+        Some(Scatter::specular(scattered, attenuation))
     }
 }
 
@@ -150,19 +187,18 @@ impl<T> Material for DiffuseLight<T>
 where
     T: Texture,
 {
-    fn scatter(&self, _r_in: &Ray, _rec: &HitRecord) -> Option<(Color, Ray)> {
-        None
-    }
-
-    fn color_emitted(&self, u: Float, v: Float, p: Point3) -> Color {
-        self.color.value(u, v, p)
+    fn color_emitted(&self, rec: &HitRecord, u: Float, v: Float, p: Point3) -> Color {
+        if rec.front_face {
+            self.color.value(u, v, p)
+        } else {
+            BLACK
+        }
     }
 }
 
 pub fn diffuse_light(r: Float, g: Float, b: Float) -> Arc<DiffuseLight<Color>> {
     Arc::new(DiffuseLight::new(color(r, g, b)))
 }
-
 
 #[derive(Clone)]
 pub struct Isotropic<T> {
@@ -179,11 +215,15 @@ impl<T> Material for Isotropic<T>
 where
     T: Texture,
 {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<(Color, Ray)> {
-        let mut rng = thread_rng();
-        let scattered = Ray::new(rec.p, random_in_unit_sphere(&mut rng), r_in.time);
+    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<Scatter> {
+        let mut rng = SmallRng::from_rng(thread_rng()).unwrap();
+        let scattered = Ray::new(rec.p, random_unit_vector(&mut rng), r_in.time);
         let attenuation = self.albedo.value(rec.u, rec.v, rec.p);
-        Some((attenuation, scattered))
+        Some(Scatter::specular(scattered, attenuation))
+    }
+
+    fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> Float {
+        1.0 / (4.0 * PI)
     }
 }
 

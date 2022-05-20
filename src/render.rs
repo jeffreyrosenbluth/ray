@@ -1,17 +1,45 @@
 use crate::geom::*;
-use crate::object::{Object, Ray};
+use crate::material::Reflection;
+use crate::object::{Object, Ray, EmptyObject};
+use crate::pdf::*;
 use crate::scenes::Environment;
+use rand::rngs::SmallRng;
+use rand::{thread_rng, Rng, SeedableRng};
 use rayon::prelude::*;
-use rand::prelude::*;
+use std::sync::Arc;
 
-pub fn ray_color(r: &Ray, background: Color, world: &impl Object, depth: u32) -> Color {
+pub fn ray_color(
+    rng: &mut SmallRng,
+    r: &Ray,
+    background: Color,
+    world: &impl Object,
+    lights: Arc<dyn Object>,
+    depth: u32,
+) -> Color {
+    // let mut rng = SmallRng::from_rng(thread_rng()).unwrap();
     if depth == 0 {
         return BLACK;
     }
     if let Some(rec) = world.hit(r, 0.001, INFINITY) {
-        let emitted = rec.material.color_emitted(rec.u, rec.v, rec.p);
-        if let Some((attenuation, scattered)) = rec.material.scatter(r, &rec) {
-            emitted + attenuation * ray_color(&scattered, background, world, depth - 1)
+        let emitted = rec.material.color_emitted(&rec, rec.u, rec.v, rec.p);
+        if let Some(scatter_rec) = rec.material.scatter(r, &rec) {
+            match scatter_rec.reflection {
+                Reflection::Scatter(pdf1) => {
+                    let pdf0 = Arc::new(ObjectPdf::new(lights.clone(), rec.p));
+                    let mixture_pdf = MixturePdf::new(pdf0, pdf1);
+                    let scattered = Ray::new(rec.p, mixture_pdf.generate(rng), r.time);
+                    let pdf_val = mixture_pdf.value(scattered.direction);
+                    emitted
+                        + scatter_rec.attenuation
+                            * rec.material.scattering_pdf(r, &rec, &scattered)
+                            * ray_color(rng, &scattered, background, world, lights, depth - 1)
+                            / pdf_val
+                }
+                Reflection::Specular(ray) => {
+                    scatter_rec.attenuation
+                        * ray_color(rng, &ray, background, world, lights, depth - 1)
+                }
+            }
         } else {
             emitted
         }
@@ -47,21 +75,34 @@ pub fn render(environment: &Environment) -> Vec<u8> {
             .into_par_iter()
             .map(|i| {
                 let mut pixel_color = BLACK;
-                for _ in 0..environment.samples_per_pixel() {
-                    let mut rng = rand::thread_rng();
-                    let random_u: Float = rng.gen();
-                    let random_v: Float = rng.gen();
-
-                    let u = ((i as Float) + random_u) / ((w - 1) as Float);
-                    let v = ((j as Float) + random_v) / ((h - 1) as Float);
-
-                    let r = environment.camera.get_ray(u, v);
-                    pixel_color += ray_color(
-                        &r,
-                        environment.background(),
-                        &environment.scene,
-                        environment.max_depth(),
-                    );
+                let mut rng = SmallRng::from_rng(thread_rng()).unwrap();
+                let n = (environment.samples_per_pixel() as f32).sqrt() as u32;
+                for s in 0..n {
+                    for t in 0..n {
+                        let u = ((i as Float) + (s as f32 + rng.gen::<Float>()) / n as f32)
+                            / ((w - 1) as Float);
+                        let v = ((j as Float) + (t as f32 + rng.gen::<Float>()) / n as f32)
+                            / ((h - 1) as Float);
+                        let r = environment.camera.get_ray(u, v);
+                        let mut rc = ray_color(
+                            &mut rng,
+                            &r,
+                            environment.background(),
+                            &environment.scene,
+                            environment.lights.clone(),
+                            environment.max_depth(),
+                        );
+                        if rc.x.is_nan() {
+                            rc.x = 0.0
+                        };
+                        if rc.y.is_nan() {
+                            rc.y = 0.0
+                        };
+                        if rc.z.is_nan() {
+                            rc.z = 0.0
+                        };
+                        pixel_color += rc;
+                    }
                 }
                 pixel_color
             })

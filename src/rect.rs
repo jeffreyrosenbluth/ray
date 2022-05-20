@@ -1,9 +1,13 @@
+use rand::rngs::SmallRng;
+use rand::Rng;
+
 use crate::aabb::*;
 use crate::geom::*;
 use crate::material::*;
 use crate::object::*;
 use std::sync::Arc;
 
+#[derive(Clone)]
 pub struct Rect {
     pub axis: Axis,
     pub p0: Float,
@@ -71,6 +75,27 @@ impl Object for Rect {
         b[q] = self.q1;
         b[s] = self.k + 0.0001;
         Some(Aabb::new(a, b))
+    }
+
+    fn pdf_value(&self, o: Vec3, v: Vec3) -> Float {
+        if let Some(rec) = self.hit(&Ray::new(o, v, 0.0), 0.001, std::f32::MAX) {
+            let area = (self.p1 - self.p0) * (self.q1 - self.q0);
+            let distance_squared = rec.t * rec.t * v.length2();
+            let cosine = (dot(v, rec.normal) / v.length()).abs();
+            return distance_squared / (cosine * area)
+        } 
+        0.0
+    }
+
+    fn random(&self, rng: &mut SmallRng, o: Vec3) -> Vec3 {
+        let (p, q, s) = self.axis.order();
+        let pr = rng.gen_range(self.p0..self.p1);
+        let qr = rng.gen_range(self.q0..self.q1);
+        let mut random_point = ZERO;
+        random_point[p] = pr;
+        random_point[q] = qr;
+        random_point[s] = self.k;
+        random_point - o
     }
 }
 

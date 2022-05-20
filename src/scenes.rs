@@ -41,14 +41,21 @@ impl RenderParams {
 pub struct Environment {
     pub scene: Box<dyn Object>,
     pub camera: Camera,
+    pub lights: Arc<dyn Object>,
     pub params: RenderParams,
 }
 
 impl Environment {
-    pub fn new(scene: Box<dyn Object>, camera: Camera, params: RenderParams) -> Self {
+    pub fn new(
+        scene: Box<dyn Object>,
+        camera: Camera,
+        lights: Arc<dyn Object>,
+        params: RenderParams,
+    ) -> Self {
         Self {
             scene,
             camera,
+            lights,
             params,
         }
     }
@@ -80,15 +87,18 @@ impl Environment {
 
 pub fn cornell_box(smoke: bool) -> Environment {
     let mut objects = Objects::new(Vec::new());
-    let red = lambertian(0.55, 0.05, 0.05);
+    let red = lambertian(0.65, 0.05, 0.05);
     let white = lambertian(0.73, 0.73, 0.73);
-    let green = lambertian(0.12, 0.15, 0.45);
-    let light = diffuse_light(7.0, 7.0, 7.0);
+    let blue = lambertian(0.12, 0.15, 0.45);
+    let yellow = lambertian(0.85, 0.65, 0.15);
+    let light = diffuse_light(15.0, 15.0, 15.0);
     let aluminum = metal(0.8, 0.85, 0.88, 0.0);
+    let bronze = metal(0.9, 0.5, 0.5, 1.0);
     let glass = dielectric(1.5);
-    objects.add(Rect::new(Axis::X, 0.0, 0.0, 555.0, 555.0, 555.0, green));
+    objects.add(Rect::new(Axis::X, 0.0, 0.0, 555.0, 555.0, 555.0, blue.clone()));
     objects.add(Rect::new(Axis::X, 0.0, 0.0, 555.0, 555.0, 0.0, red));
-    objects.add(Rect::new(Axis::Y, 163.0, 177.0, 393.0, 392.0, 554.0, light));
+    let light_rect = Rect::new(Axis::Y, 213.0 - 30.0, 227.0 - 30.0, 343.0 + 30.0, 332.0 + 30.0, 554.0, light.clone());
+    objects.add(FlipFace::new(light_rect.clone()));
     objects.add(Rect::new(
         Axis::Y,
         0.0,
@@ -116,7 +126,7 @@ pub fn cornell_box(smoke: bool) -> Environment {
         555.0,
         white.clone(),
     ));
-    let box1 = Cuboid::new(ZERO, point3(165.0, 330.0, 165.0), aluminum);
+    let box1 = Cuboid::new(ZERO, point3(165.0, 330.0, 165.0), aluminum.clone());
     let box1 = Rotate::new(Axis::Y, box1, 15.0);
     let box1 = Translate::new(box1, vec3(250.0, 0.0, 295.0));
     if smoke {
@@ -124,16 +134,10 @@ pub fn cornell_box(smoke: bool) -> Environment {
     } else {
         objects.add(box1);
     }
-    objects.add(Sphere::new(point3(190.0 ,90.0 , 190.0), 90.0 , glass));
-    // let box2 = Cuboid::new(ZERO, point3(165.0, 165.0, 165.0), white.clone());
-    // let box2 = Rotate::new(Axis::Y, box2, -18.0);
-    // let box2 = Rotate::new(Axis::X, box2, 15.0);
-    // let box2 = Translate::new(box2, vec3(130.0, 0.0, 65.0));
-    // if smoke {
-    //     objects.add(ConstantMedium::new(box2, WHITE, 0.01));
-    // } else {
-    //     objects.add(box2);
-    // }
+    objects.add(Sphere::new(point3(190.0, 90.0, 190.0), 90.0, glass));
+    objects.add(Sphere::new(point3(170.0, 90.0, 170.0), 20.0, aluminum.clone()));
+    objects.add(Sphere::new(point3(400.0, 30.0, 20.0), 30.0, bronze));
+    objects.add(Sphere::new(point3(335.0, 35.0, 35.0), 35.0, yellow));
 
     let camera = Camera::basic(
         point3(278.0, 278.0, -800.0),
@@ -143,8 +147,12 @@ pub fn cornell_box(smoke: bool) -> Environment {
         0.0,
         10.0,
     );
-    let rparams = RenderParams::new(BLACK, 1.0, 600, 800, 50);
-    Environment::new(Box::new(objects), camera, rparams)
+    let rparams = RenderParams::new(BLACK, 1.0, 600, 1_000, 50);
+    let mut lights = Objects::new(Vec::new());
+    let light3 = Sphere::new(point3(190.0, 90.0, 190.0), 90., light);
+    lights.add(light_rect);
+    lights.add(light3);
+    Environment::new(Box::new(objects), camera, Arc::new(lights), rparams)
 }
 
 pub fn book2_final_scene() -> Environment {
@@ -173,7 +181,8 @@ pub fn book2_final_scene() -> Environment {
     let n = boxes1.objects.len();
     objects.add(BvhNode::new(&mut boxes1, 0, n, 0.0..1.0));
     let light = diffuse_light(7.0, 7.0, 7.0);
-    objects.add(Rect::new(Axis::Y, 123.0, 147.0, 423.0, 412.0, 554.0, light));
+    let light_rect = Rect::new(Axis::Y, 123.0, 147.0, 423.0, 412.0, 554.0, light);
+    objects.add(FlipFace::new(light_rect.clone()));
 
     let center1 = point3(400.0, 400.0, 200.0);
     let center2 = center1 + vec3(30.0, 0.0, 0.0);
@@ -236,8 +245,8 @@ pub fn book2_final_scene() -> Environment {
         10.0,
         0.0..1.0,
     );
-    let rparams = RenderParams::new(BLACK, 1.0, 800, 1000, 50);
-    Environment::new(Box::new(objects), camera, rparams)
+    let rparams = RenderParams::new(BLACK, 1.0, 800, 100, 50);
+    Environment::new(Box::new(objects), camera, Arc::new(light_rect), rparams)
 }
 
 pub fn marbles_scene() -> Environment {
@@ -306,10 +315,11 @@ pub fn marbles_scene() -> Environment {
 
     let n = world.objects.len();
     let camera = Camera::basic(point3(13.0, 2.0, 3.0), ZERO, 20.0, 1.5, 0.1, 10.0);
-    let rparams = RenderParams::new(color(0.73, 0.73, 0.73), 1.5, 1200, 100, 50);
+    let rparams = RenderParams::new(color(0.73, 0.73, 0.73), 1.5, 1200, 10, 50);
     Environment::new(
         Box::new(BvhNode::new(&mut world, 0, n, 0.0..1.0)),
         camera,
+        Arc::new(EmptyObject {}),
         rparams,
     )
 }
