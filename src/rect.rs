@@ -1,4 +1,4 @@
-use rand::thread_rng;
+use rand::rngs::SmallRng;
 use rand::Rng;
 
 use crate::aabb::*;
@@ -87,8 +87,7 @@ impl Object for Rect {
         0.0
     }
 
-    fn random(&self, o: Vec3) -> Vec3 {
-        let mut rng = thread_rng();
+    fn random(&self, rng: &mut SmallRng, o: Vec3) -> Vec3 {
         let (p, q, s) = self.axis.order();
         let pr = rng.gen_range(self.p0..self.p1);
         let qr = rng.gen_range(self.q0..self.q1);

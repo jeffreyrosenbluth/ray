@@ -7,7 +7,7 @@ edition = "2021"
 
 [dependencies]
 png = "0.17.5"
-rand = "0.8.5"
+rand = {version = "0.8.5", features = ["small_rng"]}
 rayon = "1.5"
 noise = { git = "https://github.com/Razaekel/noise-rs.git", branch = "develop" }
 image = "0.24"

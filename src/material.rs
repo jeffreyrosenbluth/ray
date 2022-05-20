@@ -2,7 +2,8 @@ use crate::geom::*;
 use crate::object::*;
 use crate::pdf::*;
 use crate::texture::*;
-use rand::prelude::*;
+use rand::rngs::SmallRng;
+use rand::{thread_rng, Rng, SeedableRng};
 use std::sync::Arc;
 
 #[derive(Clone)]
@@ -36,11 +37,11 @@ impl Scatter {
 }
 
 pub trait Material: Send + Sync {
-    fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<Scatter> {
+    fn scatter(&self, _r_in: &Ray, _rec: &HitRecord) -> Option<Scatter> {
         None
     }
     fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> Float {
-        1.0
+        0.0
     }
     fn color_emitted(&self, _rec: &HitRecord, _u: Float, _v: Float, _p: Point3) -> Color {
         BLACK
@@ -102,24 +103,21 @@ pub struct Metal {
 
 impl Metal {
     pub fn new(albedo: Color, fuzz: Float) -> Metal {
+        let fuzz = fuzz.min(1.0);
         Metal { albedo, fuzz }
     }
 }
 
 impl Material for Metal {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<Scatter> {
-        let mut rng = thread_rng();
+        let mut rng = SmallRng::from_rng(thread_rng()).unwrap();
         let reflected = reflect(r_in.direction.normalize(), rec.normal);
         let scattered = Ray::new(
             rec.p,
             reflected + self.fuzz * random_in_unit_sphere(&mut rng),
             r_in.time,
         );
-        if dot(scattered.direction, rec.normal) > 0.0 {
-            Some(Scatter::specular(scattered, self.albedo))
-        } else {
-            None
-        }
+        Some(Scatter::specular(scattered, self.albedo))
     }
 }
 
@@ -157,9 +155,8 @@ impl Material for Dielectric {
         let cos_theta = dot(-unit_direction, hit.normal).min(1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
         let cannot_refract = refraction_ratio * sin_theta > 1.0;
-        let direction = if cannot_refract
-            || schlick(cos_theta, refraction_ratio) > thread_rng().gen::<Float>()
-        {
+        let rn: Float = SmallRng::from_rng(thread_rng()).unwrap().gen();
+        let direction = if cannot_refract || schlick(cos_theta, refraction_ratio) > rn {
             reflect(unit_direction, hit.normal)
         } else {
             refract(unit_direction, hit.normal, refraction_ratio)
@@ -219,10 +216,14 @@ where
     T: Texture,
 {
     fn scatter(&self, r_in: &Ray, rec: &HitRecord) -> Option<Scatter> {
-        let mut rng = thread_rng();
-        let scattered = Ray::new(rec.p, random_in_unit_sphere(&mut rng), r_in.time);
+        let mut rng = SmallRng::from_rng(thread_rng()).unwrap();
+        let scattered = Ray::new(rec.p, random_unit_vector(&mut rng), r_in.time);
         let attenuation = self.albedo.value(rec.u, rec.v, rec.p);
         Some(Scatter::specular(scattered, attenuation))
+    }
+
+    fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> Float {
+        1.0 / (4.0 * PI)
     }
 }
 

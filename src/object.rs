@@ -1,8 +1,9 @@
-use rand::prelude::*;
-
 use crate::aabb::*;
 use crate::geom::*;
 use crate::material::*;
+use rand::rngs::SmallRng;
+use rand::seq::SliceRandom;
+use rand::{Rng, SeedableRng};
 use std::ops::Range;
 use std::sync::Arc;
 
@@ -97,9 +98,11 @@ impl HitRecord {
 pub trait Object: Send + Sync {
     fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord>;
     fn bounding_box(&self, time_range: &Range<Float>) -> Option<Aabb>;
-    fn pdf_value(&self, _o: Vec3, _v: Vec3) -> Float { 0.0 }
-    fn random(&self, _o: Vec3) -> Vec3 {
-        vec3(1.0, 0.0, 0.0)
+    fn pdf_value(&self, _o: Vec3, _v: Vec3) -> Float {
+        panic!("The default implementaion of pdf_value should never be called.");
+    }
+    fn random(&self, _rng: &mut SmallRng, _o: Vec3) -> Vec3 {
+        panic!("The default implementaion of random should never be called.");
     }
 }
 
@@ -134,8 +137,8 @@ impl Object for Box<dyn Object> {
         (**self).pdf_value(o, v)
     }
 
-    fn random(&self, o: Vec3) -> Vec3 {
-        (**self).random(o)
+    fn random(&self, rng: &mut SmallRng, o: Vec3) -> Vec3 {
+        (**self).random(rng, o)
     }
 }
 
@@ -165,6 +168,7 @@ impl Object for Objects {
     }
 
     fn pdf_value(&self, o: Vec3, v: Vec3) -> Float {
+        debug_assert!(!self.objects.is_empty());
         self.objects
             .iter()
             .map(|h| h.pdf_value(o, v))
@@ -172,8 +176,28 @@ impl Object for Objects {
             / self.objects.len() as f32
     }
 
-    fn random(&self, o: Vec3) -> Vec3 {
-        self.objects.choose(&mut rand::thread_rng()).unwrap().random(o)
+    fn random(&self, rng: &mut SmallRng, o: Vec3) -> Vec3 {
+        self.objects.choose(rng).unwrap().random(rng, o)
+    }
+}
+
+pub struct EmptyObject {}
+
+impl Object for EmptyObject {
+    fn hit(&self, _r: &Ray, _t_min: Float, _t_max: Float) -> Option<HitRecord> {
+        None
+    }
+
+    fn bounding_box(&self, _time_range: &Range<Float>) -> Option<Aabb> {
+        None
+    }
+
+    fn pdf_value(&self, _o: Vec3, _v: Vec3) -> Float {
+        0.0
+    }
+
+    fn random(&self, _rng: &mut SmallRng, _o: Vec3) -> Vec3 {
+        ZERO
     }
 }
 
@@ -343,39 +367,39 @@ impl<O> ConstantMedium<O> {
     }
 }
 
-// impl<O> Object for ConstantMedium<O>
-// where
-//     O: Object,
-// {
-//     fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
-//         let mut rng = thread_rng();
-//         let mut rec1 = self.boundary.hit(r, Float::MIN, Float::MAX)?;
-//         let mut rec2 = self.boundary.hit(r, rec1.t + 0.0001, Float::MAX)?;
-//         rec1.t = rec1.t.max(t_min);
-//         rec2.t = rec2.t.min(t_max);
-//         if rec1.t >= rec2.t {
-//             return None;
-//         }
-//         rec1.t = rec1.t.max(0.0);
-//         let ray_length = r.direction.length();
-//         let distance_inside_boundary = (rec2.t - rec1.t) * ray_length;
-//         let hit_distance = self.neg_inv_density * rng.gen::<Float>().ln();
-//         if hit_distance > distance_inside_boundary {
-//             return None;
-//         }
-//         let t = rec1.t + hit_distance / ray_length;
-//         Some(HitRecord::new(
-//             r.at(t),
-//             vec3(1.0, 0.0, 0.0), // arbitrary
-//             Arc::new(self.phase_function.clone()),
-//             t,
-//             1.0,
-//             1.0,
-//             true, // arbitrary
-//         ))
-//     }
+impl<O> Object for ConstantMedium<O>
+where
+    O: Object,
+{
+    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
+        let mut rng = SmallRng::from_entropy();
+        let mut rec1 = self.boundary.hit(r, Float::MIN, Float::MAX)?;
+        let mut rec2 = self.boundary.hit(r, rec1.t + 0.0001, Float::MAX)?;
+        rec1.t = rec1.t.max(t_min);
+        rec2.t = rec2.t.min(t_max);
+        if rec1.t >= rec2.t {
+            return None;
+        }
+        rec1.t = rec1.t.max(0.0);
+        let ray_length = r.direction.length();
+        let distance_inside_boundary = (rec2.t - rec1.t) * ray_length;
+        let hit_distance = self.neg_inv_density * rng.gen::<Float>().ln();
+        if hit_distance > distance_inside_boundary {
+            return None;
+        }
+        let t = rec1.t + hit_distance / ray_length;
+        Some(HitRecord::new(
+            r.at(t),
+            vec3(1.0, 0.0, 0.0), // arbitrary
+            Arc::new(self.phase_function.clone()),
+            t,
+            1.0,
+            1.0,
+            true, // arbitrary
+        ))
+    }
 
-//     fn bounding_box(&self, time_range: &std::ops::Range<Float>) -> Option<crate::aabb::Aabb> {
-//         self.boundary.bounding_box(time_range)
-//     }
-// }
+    fn bounding_box(&self, time_range: &std::ops::Range<Float>) -> Option<crate::aabb::Aabb> {
+        self.boundary.bounding_box(time_range)
+    }
+}

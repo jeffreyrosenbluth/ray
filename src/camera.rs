@@ -1,7 +1,6 @@
-use rand::prelude::*;
-
 use crate::geom::*;
 use crate::object::*;
+use rand::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Camera {

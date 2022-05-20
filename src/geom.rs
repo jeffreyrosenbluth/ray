@@ -1,5 +1,5 @@
 use rand::distributions::{Distribution, Standard};
-use rand::prelude::*;
+use rand::Rng;
 use std::ops::{Add, AddAssign, Div, DivAssign, Mul, MulAssign, Neg, Sub, SubAssign};
 
 pub type Float = f32;
@@ -180,15 +180,14 @@ impl Div<Float> for Vec3 {
     type Output = Vec3;
 
     fn div(self, rhs: Float) -> Self::Output {
-        if rhs == 0.0 {
-            panic!("Tried to divide a Vec3 by 0")
-        }
+        debug_assert_ne!(rhs, 0.0);
         Vec3::new(self.x / rhs, self.y / rhs, self.z / rhs)
     }
 }
 
 impl DivAssign<Float> for Vec3 {
     fn div_assign(&mut self, rhs: Float) {
+        debug_assert_ne!(rhs, 0.0);
         *self = *self / rhs;
     }
 }
@@ -205,9 +204,7 @@ impl Div<Vec3> for Float {
     type Output = Vec3;
 
     fn div(self, rhs: Vec3) -> Self::Output {
-        if self == 0.0 {
-            panic!("Tried to divide a Vec3 by 0")
-        }
+        debug_assert_ne!(self, 0.0);
         rhs / self
     }
 }
@@ -328,7 +325,6 @@ impl std::ops::Index<Axis> for Vec3 {
             Axis::X => &self.x,
             Axis::Y => &self.y,
             Axis::Z => &self.z,
-            _ => panic!("Index out or range for Vec3"),
         }
     }
 }
@@ -339,7 +335,6 @@ impl std::ops::IndexMut<Axis> for Vec3 {
             Axis::X => &mut self.x,
             Axis::Y => &mut self.y,
             Axis::Z => &mut self.z,
-            _ => panic!("Index out or range for Vec3"),
         }
     }
 }
@@ -422,7 +417,7 @@ mod tests {
         assert_eq!(x, Vec3::new(2.0, 0.0, -2.0));
     }
     #[test]
-    fn test_mul_Float() {
+    fn test_mul_float() {
         assert_eq!(Vec3::new(1.0, 0.0, -1.0) * 1.0, Vec3::new(1.0, 0.0, -1.0));
     }
     #[test]
