@@ -1,18 +1,17 @@
 use crate::geom::*;
-use crate::object::*;
 use rand::prelude::*;
 
 #[derive(Debug, Clone)]
 pub struct Camera {
     pub origin: Point3,
     pub lookat: Point3,
-    pub aperture: Float,
+    pub aperture: f32,
     horizontal: Vec3,
     vertical: Vec3,
     lower_left_corner: Point3,
     u: Vec3,
     v: Vec3,
-    exposure: std::ops::Range<Float>,
+    exposure: std::ops::Range<f32>,
 }
 
 impl Camera {
@@ -20,11 +19,11 @@ impl Camera {
         origin: Point3,
         lookat: Point3,
         vup: Vec3,
-        vfov: Float,
-        aspect_ratio: Float,
-        aperture: Float,
-        focus_dist: Float,
-        exposure: std::ops::Range<Float>,
+        vfov: f32,
+        aspect_ratio: f32,
+        aperture: f32,
+        focus_dist: f32,
+        exposure: std::ops::Range<f32>,
     ) -> Self {
         let theta = degrees_to_radians(vfov);
         let viewport_height = 2.0 * (theta / 2.0).tan();
@@ -52,10 +51,10 @@ impl Camera {
     pub fn basic(
         origin: Point3,
         lookat: Point3,
-        vfov: Float,
-        aspect_ratio: Float,
-        aperture: Float,
-        focus_dist: Float,
+        vfov: f32,
+        aspect_ratio: f32,
+        aperture: f32,
+        focus_dist: f32,
     ) -> Self {
         Self::new(
             origin,
@@ -69,7 +68,7 @@ impl Camera {
         )
     }
 
-    pub fn get_ray(&self, s: Float, t: Float) -> Ray {
+    pub fn get_ray(&self, s: f32, t: f32) -> Ray {
         let mut rng = thread_rng();
         let rd = self.aperture / 2.0 * random_in_unit_disk(&mut rng);
         let offset = self.u * rd.x + self.v * rd.y;

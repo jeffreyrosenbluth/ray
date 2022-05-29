@@ -10,22 +10,22 @@ use std::sync::Arc;
 #[derive(Clone)]
 pub struct Rect {
     pub axis: Axis,
-    pub p0: Float,
-    pub q0: Float,
-    pub p1: Float,
-    pub q1: Float,
-    pub k: Float,
+    pub p0: f32,
+    pub q0: f32,
+    pub p1: f32,
+    pub q1: f32,
+    pub k: f32,
     pub material: Arc<dyn Material>,
 }
 
 impl Rect {
     pub fn new(
         axis: Axis,
-        p0: Float,
-        q0: Float,
-        p1: Float,
-        q1: Float,
-        k: Float,
+        p0: f32,
+        q0: f32,
+        p1: f32,
+        q1: f32,
+        k: f32,
         material: Arc<dyn Material>,
     ) -> Self {
         Self {
@@ -41,7 +41,7 @@ impl Rect {
 }
 
 impl Object for Rect {
-    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         let (p, q, s) = self.axis.order();
         let t = (self.k - r.origin[s]) / r.direction[s];
         if t < t_min || t > t_max {
@@ -64,10 +64,10 @@ impl Object for Rect {
         Some(rec)
     }
 
-    fn bounding_box(&self, _time_range: &std::ops::Range<Float>) -> Option<crate::aabb::Aabb> {
+    fn bounding_box(&self, _time_range: &std::ops::Range<f32>) -> Option<crate::aabb::Aabb> {
         let (p, q, s) = self.axis.order();
-        let mut a = ZERO;
-        let mut b = ZERO;
+        let mut a = Vec3::ZERO;
+        let mut b = Vec3::ZERO;
         a[p] = self.p0;
         a[q] = self.q0;
         a[s] = self.k - 0.0001;
@@ -77,10 +77,10 @@ impl Object for Rect {
         Some(Aabb::new(a, b))
     }
 
-    fn pdf_value(&self, o: Vec3, v: Vec3) -> Float {
+    fn pdf_value(&self, o: Vec3, v: Vec3) -> f32 {
         if let Some(rec) = self.hit(&Ray::new(o, v, 0.0), 0.001, std::f32::MAX) {
             let area = (self.p1 - self.p0) * (self.q1 - self.q0);
-            let distance_squared = rec.t * rec.t * v.length2();
+            let distance_squared = rec.t * rec.t * v.length_squared();
             let cosine = (dot(v, rec.normal) / v.length()).abs();
             return distance_squared / (cosine * area)
         } 
@@ -91,7 +91,7 @@ impl Object for Rect {
         let (p, q, s) = self.axis.order();
         let pr = rng.gen_range(self.p0..self.p1);
         let qr = rng.gen_range(self.q0..self.q1);
-        let mut random_point = ZERO;
+        let mut random_point = Vec3::ZERO;
         random_point[p] = pr;
         random_point[q] = qr;
         random_point[s] = self.k;
@@ -174,11 +174,11 @@ impl Cuboid {
 }
 
 impl Object for Cuboid {
-    fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> Option<HitRecord> {
+    fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         self.sides.hit(r, t_min, t_max)
     }
 
-    fn bounding_box(&self, _time_range: &std::ops::Range<Float>) -> Option<Aabb> {
+    fn bounding_box(&self, _time_range: &std::ops::Range<f32>) -> Option<Aabb> {
         Some(Aabb::new(self.box_min, self.box_max))
     }
 }

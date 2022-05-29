@@ -40,10 +40,10 @@ pub trait Material: Send + Sync {
     fn scatter(&self, _r_in: &Ray, _rec: &HitRecord) -> Option<Scatter> {
         None
     }
-    fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> Float {
+    fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> f32 {
         0.0
     }
-    fn color_emitted(&self, _rec: &HitRecord, _u: Float, _v: Float, _p: Point3) -> Color {
+    fn color_emitted(&self, _rec: &HitRecord, _u: f32, _v: f32, _p: Point3) -> Color {
         BLACK
     }
 }
@@ -71,7 +71,7 @@ impl Lambertian<Color> {
     }
 }
 
-pub fn lambertian(r: Float, g: Float, b: Float) -> Arc<Lambertian<Color>> {
+pub fn lambertian(r: f32, g: f32, b: f32) -> Arc<Lambertian<Color>> {
     Arc::new(Lambertian::solid_color(color(r, g, b)))
 }
 
@@ -90,7 +90,7 @@ where
         ))
     }
 
-    fn scattering_pdf(&self, _r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> Float {
+    fn scattering_pdf(&self, _r_in: &Ray, rec: &HitRecord, scattered: &Ray) -> f32 {
         let cosine = dot(rec.normal, scattered.direction.normalize()).max(0.0);
         cosine / PI
     }
@@ -98,11 +98,11 @@ where
 
 pub struct Metal {
     albedo: Color,
-    fuzz: Float,
+    fuzz: f32,
 }
 
 impl Metal {
-    pub fn new(albedo: Color, fuzz: Float) -> Metal {
+    pub fn new(albedo: Color, fuzz: f32) -> Metal {
         let fuzz = fuzz.min(1.0);
         Metal { albedo, fuzz }
     }
@@ -121,23 +121,23 @@ impl Material for Metal {
     }
 }
 
-pub fn metal(r: Float, g: Float, b: Float, fuzz: Float) -> Arc<Metal> {
+pub fn metal(r: f32, g: f32, b: f32, fuzz: f32) -> Arc<Metal> {
     Arc::new(Metal::new(color(r, g, b), fuzz))
 }
 
 pub struct Dielectric {
-    ir: Float,
+    ir: f32,
 }
 
 impl Dielectric {
-    pub fn new(index_of_refraction: Float) -> Dielectric {
+    pub fn new(index_of_refraction: f32) -> Dielectric {
         Dielectric {
             ir: index_of_refraction,
         }
     }
 }
 
-fn schlick(cosine: Float, ir: Float) -> Float {
+fn schlick(cosine: f32, ir: f32) -> f32 {
     let mut r0 = (1.0 - ir) / (1.0 + ir);
     r0 = r0 * r0;
     r0 + (1.0 - r0) * (1.0 - cosine).powi(5)
@@ -155,7 +155,7 @@ impl Material for Dielectric {
         let cos_theta = dot(-unit_direction, hit.normal).min(1.0);
         let sin_theta = (1.0 - cos_theta * cos_theta).sqrt();
         let cannot_refract = refraction_ratio * sin_theta > 1.0;
-        let rn: Float = SmallRng::from_rng(thread_rng()).unwrap().gen();
+        let rn: f32 = SmallRng::from_rng(thread_rng()).unwrap().gen();
         let direction = if cannot_refract || schlick(cos_theta, refraction_ratio) > rn {
             reflect(unit_direction, hit.normal)
         } else {
@@ -166,7 +166,7 @@ impl Material for Dielectric {
     }
 }
 
-pub fn dielectric(index_of_refraction: Float) -> Arc<Dielectric> {
+pub fn dielectric(index_of_refraction: f32) -> Arc<Dielectric> {
     Arc::new(Dielectric::new(index_of_refraction))
 }
 
@@ -187,7 +187,7 @@ impl<T> Material for DiffuseLight<T>
 where
     T: Texture,
 {
-    fn color_emitted(&self, rec: &HitRecord, u: Float, v: Float, p: Point3) -> Color {
+    fn color_emitted(&self, rec: &HitRecord, u: f32, v: f32, p: Point3) -> Color {
         if rec.front_face {
             self.color.value(u, v, p)
         } else {
@@ -196,7 +196,7 @@ where
     }
 }
 
-pub fn diffuse_light(r: Float, g: Float, b: Float) -> Arc<DiffuseLight<Color>> {
+pub fn diffuse_light(r: f32, g: f32, b: f32) -> Arc<DiffuseLight<Color>> {
     Arc::new(DiffuseLight::new(color(r, g, b)))
 }
 
@@ -222,11 +222,11 @@ where
         Some(Scatter::specular(scattered, attenuation))
     }
 
-    fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> Float {
+    fn scattering_pdf(&self, _r_in: &Ray, _rec: &HitRecord, _scattered: &Ray) -> f32 {
         1.0 / (4.0 * PI)
     }
 }
 
-pub fn isotropic(r: Float, g: Float, b: Float) -> Arc<Isotropic<Color>> {
+pub fn isotropic(r: f32, g: f32, b: f32) -> Arc<Isotropic<Color>> {
     Arc::new(Isotropic::new(color(r, g, b)))
 }

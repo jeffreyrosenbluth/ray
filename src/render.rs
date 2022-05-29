@@ -1,6 +1,6 @@
 use crate::geom::*;
 use crate::material::Reflection;
-use crate::object::{Object, Ray, EmptyObject};
+use crate::object::Object;
 use crate::pdf::*;
 use crate::scenes::Environment;
 use rand::rngs::SmallRng;
@@ -54,7 +54,7 @@ fn write_color(data: &mut Vec<u8>, pixel_color: Color, samples_per_pixel: u32) {
     let mut b = pixel_color.z;
 
     // Divide the color by the number of samples.
-    let scale = 1.0 / samples_per_pixel as Float;
+    let scale = 1.0 / samples_per_pixel as f32;
     r = (scale * r).sqrt();
     g = (scale * g).sqrt();
     b = (scale * b).sqrt();
@@ -79,10 +79,10 @@ pub fn render(environment: &Environment) -> Vec<u8> {
                 let n = (environment.samples_per_pixel() as f32).sqrt() as u32;
                 for s in 0..n {
                     for t in 0..n {
-                        let u = ((i as Float) + (s as f32 + rng.gen::<Float>()) / n as f32)
-                            / ((w - 1) as Float);
-                        let v = ((j as Float) + (t as f32 + rng.gen::<Float>()) / n as f32)
-                            / ((h - 1) as Float);
+                        let u = ((i as f32) + (s as f32 + rng.gen::<f32>()) / n as f32)
+                            / ((w - 1) as f32);
+                        let v = ((j as f32) + (t as f32 + rng.gen::<f32>()) / n as f32)
+                            / ((h - 1) as f32);
                         let r = environment.camera.get_ray(u, v);
                         let mut rc = ray_color(
                             &mut rng,

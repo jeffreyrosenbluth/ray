@@ -1,5 +1,4 @@
 use crate::geom::*;
-use crate::object::Ray;
 
 #[derive(Copy, Clone, Debug)]
 pub struct Aabb {
@@ -12,20 +11,14 @@ impl Aabb {
         Self { box_min, box_max }
     }
 
-    pub const EMPTY: Self = Aabb {
-        box_min: Vec3 {
-            x: Float::MAX,
-            y: Float::MAX,
-            z: Float::MAX,
-        },
-        box_max: Vec3 {
-            x: Float::MIN,
-            y: Float::MIN,
-            z: Float::MIN,
-        },
-    };
+    pub fn empty() -> Self {
+        Self {
+            box_min: vec3(f32::MAX, f32::MAX, f32::MAX),
+            box_max: vec3(f32::MIN, f32::MIN, f32::MIN),
+        }
+    }
 
-    pub fn hit(&self, r: &Ray, t_min: Float, t_max: Float) -> bool {
+    pub fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> bool {
         for a in 0..3 {
             let inv_d = 1.0 / r.direction[a];
             let mut t0 = (self.box_min[a] - r.origin[a]) * inv_d;

@@ -5,7 +5,7 @@ use rand::rngs::SmallRng;
 use std::sync::Arc;
 
 pub trait Pdf {
-    fn value(&self, direction: Vec3) -> Float;
+    fn value(&self, direction: Vec3) -> f32;
     fn generate(&self, rng: &mut SmallRng) -> Vec3;
 }
 
@@ -26,7 +26,7 @@ impl CosinePdf {
 }
 
 impl Pdf for CosinePdf {
-    fn value(&self, direction: Vec3) -> Float {
+    fn value(&self, direction: Vec3) -> f32 {
         let cosine = dot(direction.normalize(), self.uvw.w);
         if cosine <= 0.0 {
             1.0
@@ -61,7 +61,7 @@ impl<T> Pdf for ObjectPdf<T>
 where
     T: Object + ?Sized,
 {
-    fn value(&self, direction: Vec3) -> Float {
+    fn value(&self, direction: Vec3) -> f32 {
         self.object.pdf_value(self.o, direction)
     }
 
@@ -82,7 +82,7 @@ impl MixturePdf {
 }
 
 impl Pdf for MixturePdf {
-    fn value(&self, direction: Vec3) -> Float {
+    fn value(&self, direction: Vec3) -> f32 {
         0.5 * self.p0.value(direction) + 0.5 * self.p1.value(direction)
     }
 

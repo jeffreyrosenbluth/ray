@@ -11,7 +11,7 @@ use std::sync::Arc;
 
 pub struct RenderParams {
     pub background: Color,
-    pub apsect_ratio: Float,
+    pub apsect_ratio: f32,
     pub width: u32,
     pub height: u32,
     pub samples_per_pixel: u32,
@@ -21,12 +21,12 @@ pub struct RenderParams {
 impl RenderParams {
     pub fn new(
         background: Color,
-        apsect_ratio: Float,
+        apsect_ratio: f32,
         width: u32,
         samples_per_pixel: u32,
         max_depth: u32,
     ) -> Self {
-        let height = (width as Float / apsect_ratio) as u32;
+        let height = (width as f32 / apsect_ratio) as u32;
         Self {
             background,
             apsect_ratio,
@@ -64,7 +64,7 @@ impl Environment {
         self.params.background
     }
 
-    pub fn aspect_ratio(&self) -> Float {
+    pub fn aspect_ratio(&self) -> f32 {
         self.params.apsect_ratio
     }
 
@@ -126,7 +126,7 @@ pub fn cornell_box(smoke: bool) -> Environment {
         555.0,
         white.clone(),
     ));
-    let box1 = Cuboid::new(ZERO, point3(165.0, 330.0, 165.0), aluminum.clone());
+    let box1 = Cuboid::new(Vec3::ZERO, point3(165.0, 330.0, 165.0), aluminum.clone());
     let box1 = Rotate::new(Axis::Y, box1, 15.0);
     let box1 = Translate::new(box1, vec3(250.0, 0.0, 295.0));
     if smoke {
@@ -165,8 +165,8 @@ pub fn book2_final_scene() -> Environment {
     for i in 0..BOXES_PER_SIDE {
         for j in 0..BOXES_PER_SIDE {
             let w = 100.0;
-            let x0 = -1000.0 + i as Float * w;
-            let z0 = -1000.0 + j as Float * w;
+            let x0 = -1000.0 + i as f32 * w;
+            let z0 = -1000.0 + j as f32 * w;
             let y0 = 0.0;
             let x1 = x0 + w;
             let y1 = rng.gen_range(1.0..101.0);
@@ -209,7 +209,7 @@ pub fn book2_final_scene() -> Environment {
     let boundary2 = Sphere::new(point3(360.0, 150.0, 145.0), 70.0, dielectric(1.5));
     objects.add(boundary1);
     objects.add(ConstantMedium::new(boundary2, color(0.2, 0.4, 0.9), 0.2));
-    let boundary = Sphere::new(ZERO, 5000.0, dielectric(1.5));
+    let boundary = Sphere::new(Vec3::ZERO, 5000.0, dielectric(1.5));
     objects.add(ConstantMedium::new(boundary, WHITE, 0.0001));
 
     let earth_texture = ImageTexture::new("/Users/jeffreyrosenbluth/Rust/ray/assets/earthmap.jpeg");
@@ -266,11 +266,11 @@ pub fn marbles_scene() -> Environment {
             if a == 4 && b == 0 {
                 continue;
             };
-            let choose_mat: Float = rng.gen();
+            let choose_mat: f32 = rng.gen();
             let center = Point3::new(
-                (a as Float) + rng.gen_range(0.0..0.9),
+                (a as f32) + rng.gen_range(0.0..0.9),
                 0.2,
-                (b as Float) + rng.gen_range(0.0..0.9),
+                (b as f32) + rng.gen_range(0.0..0.9),
             );
 
             if choose_mat < 0.85 {
@@ -314,7 +314,7 @@ pub fn marbles_scene() -> Environment {
     world.add(sphere3);
 
     let n = world.objects.len();
-    let camera = Camera::basic(point3(13.0, 2.0, 3.0), ZERO, 20.0, 1.5, 0.1, 10.0);
+    let camera = Camera::basic(point3(13.0, 2.0, 3.0), Vec3::ZERO, 20.0, 1.5, 0.1, 10.0);
     let rparams = RenderParams::new(color(0.73, 0.73, 0.73), 1.5, 1200, 10, 50);
     Environment::new(
         Box::new(BvhNode::new(&mut world, 0, n, 0.0..1.0)),
