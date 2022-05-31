@@ -1,10 +1,6 @@
 use crate::aabb::*;
-use crate::bvh::BvhNode;
-// use crate::geom::*;
 use crate::geom::*;
 use crate::material::*;
-use crate::rect::{Cuboid, Rect};
-use crate::sphere::Sphere;
 use rand::rngs::SmallRng;
 use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
@@ -81,7 +77,7 @@ impl HitRecord {
 pub trait Object: Send + Sync {
     fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
     fn bounding_box(&self, time_range: &Range<f32>) -> Option<Aabb>;
-    fn add_transform(&mut self, transform: Mat4);
+    fn add_transform(&mut self, _transform: Mat4) {}
     fn pdf_value(&self, _o: Vec3, _v: Vec3) -> f32 {
         panic!("The default implementaion of pdf_value should never be called.");
     }
@@ -91,11 +87,11 @@ pub trait Object: Send + Sync {
 }
 
 pub struct Objects {
-    pub objects: Vec<Geometry>,
+    pub objects: Vec<Box<dyn Object>>,
 }
 
 impl Objects {
-    pub fn new(objects: Vec<Geometry>) -> Self {
+    pub fn new(objects: Vec<Box<dyn Object>>) -> Self {
         Self { objects }
     }
 
@@ -103,8 +99,8 @@ impl Objects {
         self.objects.clear()
     }
 
-    pub fn add(&mut self, object: Geometry) {
-        self.objects.push(object);
+    pub fn add(&mut self, object: impl Object + 'static) {
+        self.objects.push(Box::new(object));
     }
 }
 
@@ -118,7 +114,7 @@ impl Object for Box<dyn Object> {
     }
 
     fn add_transform(&mut self, transform: Mat4) {
-        self.as_ref().add_transform(transform);
+        self.as_mut().add_transform(transform);
     }
 
     fn pdf_value(&self, o: Vec3, v: Vec3) -> f32 {
@@ -156,9 +152,9 @@ impl Object for Objects {
     }
 
     fn add_transform(&mut self, transform: Mat4) {
-        for object in &self.objects {
-            object.add_transform(transform)
-        }
+        self.objects
+            .iter_mut()
+            .for_each(|object| object.add_transform(transform));
     }
 
     fn pdf_value(&self, o: Vec3, v: Vec3) -> f32 {
@@ -190,98 +186,6 @@ impl Object for EmptyObject {
 
     fn random(&self, _rng: &mut SmallRng, _o: Vec3) -> Vec3 {
         Vec3::ZERO
-    }
-}
-
-pub enum Geometry {
-    Sphere(Sphere),
-    Rect(Rect),
-    Cuboid(Cuboid),
-    BvhNode(BvhNode),
-}
-
-impl Geometry {
-    pub fn sphere(center: Point3, radius: f32, material: Arc<dyn Material>) -> Self {
-        Self::Sphere(Sphere::new(center, radius, material))
-    }
-
-    pub fn sphere_moving(
-        center0: Point3,
-        center1: Point3,
-        radius: f32,
-        material: Arc<dyn Material>,
-        time_range: Range<f32>,
-    ) -> Self {
-        Self::Sphere(Sphere::new_moving(
-            center0, center1, radius, material, time_range,
-        ))
-    }
-
-    pub fn rect(
-        axis: Axis,
-        p0: f32,
-        q0: f32,
-        p1: f32,
-        q1: f32,
-        k: f32,
-        material: Arc<dyn Material>,
-    ) -> Self {
-        Self::Rect(Rect::new(axis, p0, q0, p1, q1, k, material))
-    }
-
-    pub fn cuboid(box_min: Point3, box_max: Point3, material: Arc<dyn Material>) -> Self {
-        Self::Cuboid(Cuboid::new(box_min, box_max, material))
-    }
-
-    pub fn bvh_node(objects: &mut Objects, start: usize, end: usize, time: Range<f32>) -> Self {
-        Self::BvhNode(BvhNode::new(objects, start, end, time))
-    }
-}
-
-impl Object for Geometry {
-    fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
-        match self {
-            Geometry::Sphere(g) => g.hit(r, t_min, t_max),
-            Geometry::Rect(g) => g.hit(r, t_min, t_max),
-            Geometry::Cuboid(g) => g.hit(r, t_min, t_max),
-            Geometry::BvhNode(g) => g.hit(r, t_min, t_max),
-        }
-    }
-
-    fn bounding_box(&self, time_range: &Range<f32>) -> Option<Aabb> {
-        match self {
-            Geometry::Sphere(g) => g.bounding_box(time_range),
-            Geometry::Rect(g) => g.bounding_box(time_range),
-            Geometry::Cuboid(g) => g.bounding_box(time_range),
-            Geometry::BvhNode(g) => g.bounding_box(time_range),
-        }
-    }
-
-    fn pdf_value(&self, o: Vec3, v: Vec3) -> f32 {
-        match self {
-            Geometry::Sphere(g) => g.pdf_value(o, v),
-            Geometry::Rect(g) => g.pdf_value(o, v),
-            Geometry::Cuboid(g) => g.pdf_value(o, v),
-            Geometry::BvhNode(g) => g.pdf_value(o, v),
-        }
-    }
-
-    fn random(&self, rng: &mut SmallRng, o: Vec3) -> Vec3 {
-        match self {
-            Geometry::Sphere(g) => g.random(rng, o),
-            Geometry::Rect(g) => g.random(rng, o),
-            Geometry::Cuboid(g) => g.random(rng, o),
-            Geometry::BvhNode(g) => g.random(rng, o),
-        }
-    }
-
-    fn add_transform(&mut self, transform: Mat4) {
-        match self {
-            Geometry::Sphere(g) => g.add_transform(transform),
-            Geometry::Rect(g) => g.add_transform(transform),
-            Geometry::Cuboid(g) => g.add_transform(transform),
-            Geometry::BvhNode(g) => g.add_transform(transform),
-        }
     }
 }
 

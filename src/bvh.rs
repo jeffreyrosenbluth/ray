@@ -1,5 +1,5 @@
 use crate::aabb::*;
-use crate::geom::*;
+use crate::geom::Ray;
 use crate::object::*;
 use rand::prelude::*;
 use std::cmp::Ordering;
@@ -7,17 +7,15 @@ use std::ops::Range;
 use std::sync::Arc;
 
 pub struct BvhNode {
-    pub left: Arc<Geometry>,
-    pub right: Arc<Geometry>,
+    pub left: Arc<dyn Object>,
+    pub right: Arc<dyn Object>,
     pub bbox: Aabb,
-    transform: Mat4,
-    inv_transform: Mat4,
 }
 
 impl BvhNode {
     pub fn new(objects: &mut Objects, start: usize, end: usize, time: Range<f32>) -> Self {
         let mut rng = rand::thread_rng();
-        let axis: i32 = rng.gen_range(0..3);
+        let axis = rng.gen_range(0..3);
         let comparator = match axis {
             0 => Self::x_comparator,
             1 => Self::y_comparator,
@@ -27,12 +25,12 @@ impl BvhNode {
         let object_span = end - start;
         let (left, right) = match object_span {
             1 => {
-                let first: Arc<Geometry> = objects.objects.remove(0).into();
+                let first: Arc<dyn Object> = objects.objects.remove(0).into();
                 (first.clone(), first)
             }
             2 => {
-                let first: Arc<Geometry> = objects.objects.remove(0).into();
-                let second: Arc<Geometry> = objects.objects.remove(0).into();
+                let first: Arc<dyn Object> = objects.objects.remove(0).into();
+                let second: Arc<dyn Object> = objects.objects.remove(0).into();
                 match comparator(&*first, &*second) {
                     Ordering::Less => (first, second),
                     _ => (second, first),
@@ -41,10 +39,8 @@ impl BvhNode {
             _ => {
                 objects.objects.sort_by(|x, y| comparator(x, y));
                 let mid = start + object_span / 2;
-                let left: Arc<Geometry> =
-                    Arc::new(Geometry::bvh_node(objects, start, mid, time.clone()));
-                let right: Arc<Geometry> =
-                    Arc::new(Geometry::bvh_node(objects, mid, end, time.clone()));
+                let left: Arc<dyn Object> = Arc::new(Self::new(objects, start, mid, time.clone()));
+                let right: Arc<dyn Object> = Arc::new(Self::new(objects, mid, end, time.clone()));
 
                 (left, right)
             }
@@ -53,18 +49,10 @@ impl BvhNode {
         let box_left = left.bounding_box(&time).unwrap();
         let box_right = right.bounding_box(&time).unwrap();
         let bbox = surrounding_box(box_left, box_right);
-        let transform = Mat4::IDENTITY;
-        let inv_transform = Mat4::IDENTITY;
-        Self {
-            left,
-            right,
-            bbox,
-            transform,
-            inv_transform,
-        }
+        Self { left, right, bbox }
     }
 
-    fn comparator(x: &Geometry, y: &Geometry, axis: usize) -> Ordering {
+    fn comparator(x: &dyn Object, y: &dyn Object, axis: usize) -> Ordering {
         let box_x = x.bounding_box(&(0.0..0.0)).unwrap();
         let box_y = y.bounding_box(&(0.0..0.0)).unwrap();
         let x = box_x.box_min[axis];
@@ -77,13 +65,13 @@ impl BvhNode {
             Ordering::Equal
         }
     }
-    pub fn x_comparator(x: &Geometry, y: &Geometry) -> Ordering {
+    pub fn x_comparator(x: &dyn Object, y: &dyn Object) -> Ordering {
         Self::comparator(x, y, 0)
     }
-    pub fn y_comparator(x: &Geometry, y: &Geometry) -> Ordering {
+    pub fn y_comparator(x: &dyn Object, y: &dyn Object) -> Ordering {
         Self::comparator(x, y, 1)
     }
-    pub fn z_comparator(x: &Geometry, y: &Geometry) -> Ordering {
+    pub fn z_comparator(x: &dyn Object, y: &dyn Object) -> Ordering {
         Self::comparator(x, y, 2)
     }
 }
@@ -105,10 +93,5 @@ impl Object for BvhNode {
 
     fn bounding_box(&self, _time_range: &std::ops::Range<f32>) -> Option<Aabb> {
         Some(self.bbox)
-    }
-
-    fn add_transform(&mut self, transform: Mat4) {
-        self.transform = transform * self.transform;
-        self.inv_transform = transform.inverse() * self.inv_transform;
     }
 }

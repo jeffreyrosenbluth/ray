@@ -132,15 +132,13 @@ pub struct Cuboid {
     pub box_min: Point3,
     pub box_max: Point3,
     pub sides: Objects,
-    transform: Mat4,
-    inv_transform: Mat4,
     pub material: Arc<dyn Material>,
 }
 
 impl Cuboid {
     pub fn new(box_min: Point3, box_max: Point3, material: Arc<dyn Material>) -> Self {
         let mut sides = Objects::new(Vec::new());
-        sides.add(Geometry::rect(
+        sides.add(Rect::new(
             Axis::Z,
             box_min.x,
             box_min.y,
@@ -149,7 +147,7 @@ impl Cuboid {
             box_max.z,
             material.clone(),
         ));
-        sides.add(Geometry::rect(
+        sides.add(Rect::new(
             Axis::Z,
             box_min.x,
             box_min.y,
@@ -158,7 +156,7 @@ impl Cuboid {
             box_min.z,
             material.clone(),
         ));
-        sides.add(Geometry::rect(
+        sides.add(Rect::new(
             Axis::Y,
             box_min.x,
             box_min.z,
@@ -167,7 +165,7 @@ impl Cuboid {
             box_max.y,
             material.clone(),
         ));
-        sides.add(Geometry::rect(
+        sides.add(Rect::new(
             Axis::Y,
             box_min.x,
             box_min.z,
@@ -177,7 +175,7 @@ impl Cuboid {
             material.clone(),
         ));
 
-        sides.add(Geometry::rect(
+        sides.add(Rect::new(
             Axis::X,
             box_min.y,
             box_min.z,
@@ -186,7 +184,7 @@ impl Cuboid {
             box_max.x,
             material.clone(),
         ));
-        sides.add(Geometry::rect(
+        sides.add(Rect::new(
             Axis::X,
             box_min.y,
             box_min.z,
@@ -199,14 +197,11 @@ impl Cuboid {
             box_min,
             box_max,
             sides,
-            transform: Mat4::IDENTITY,
-            inv_transform: Mat4::IDENTITY,
             material,
         }
     }
 }
 
-/// XXX tranform rectanges XXX
 impl Object for Cuboid {
     fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
         self.sides.hit(r, t_min, t_max)
@@ -217,8 +212,9 @@ impl Object for Cuboid {
     }
 
     fn add_transform(&mut self, transform: Mat4) {
-        for side in self.sides.objects {
+        self.sides.objects.iter_mut().for_each(|side| {
             side.add_transform(transform);
-        }
+            dbg!(transform);
+        });
     }
 }

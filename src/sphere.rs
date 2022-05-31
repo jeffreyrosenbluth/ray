@@ -61,6 +61,12 @@ impl Sphere {
             + ((time - self.time_range.start) / (self.time_range.end - self.time_range.start))
                 * (self.center1 - self.center0)
     }
+
+    pub fn set_transform(mut self, transform: Mat4) -> Self {
+        self.transform = transform;
+        self.inv_transform = transform.inverse();
+        self
+    }
 }
 
 /// Returns (u, v)
