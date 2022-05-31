@@ -1,6 +1,10 @@
 use crate::aabb::*;
+use crate::bvh::BvhNode;
+// use crate::geom::*;
 use crate::geom::*;
 use crate::material::*;
+use crate::rect::{Cuboid, Rect};
+use crate::sphere::Sphere;
 use rand::rngs::SmallRng;
 use rand::seq::SliceRandom;
 use rand::{Rng, SeedableRng};
@@ -77,6 +81,7 @@ impl HitRecord {
 pub trait Object: Send + Sync {
     fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
     fn bounding_box(&self, time_range: &Range<f32>) -> Option<Aabb>;
+    fn add_transform(&mut self, transform: Mat4);
     fn pdf_value(&self, _o: Vec3, _v: Vec3) -> f32 {
         panic!("The default implementaion of pdf_value should never be called.");
     }
@@ -86,11 +91,11 @@ pub trait Object: Send + Sync {
 }
 
 pub struct Objects {
-    pub objects: Vec<Box<dyn Object>>,
+    pub objects: Vec<Geometry>,
 }
 
 impl Objects {
-    pub fn new(objects: Vec<Box<dyn Object>>) -> Self {
+    pub fn new(objects: Vec<Geometry>) -> Self {
         Self { objects }
     }
 
@@ -98,8 +103,8 @@ impl Objects {
         self.objects.clear()
     }
 
-    pub fn add(&mut self, object: impl Object + 'static) {
-        self.objects.push(Box::new(object));
+    pub fn add(&mut self, object: Geometry) {
+        self.objects.push(object);
     }
 }
 
@@ -110,6 +115,10 @@ impl Object for Box<dyn Object> {
 
     fn bounding_box(&self, time_range: &Range<f32>) -> Option<Aabb> {
         self.as_ref().bounding_box(time_range)
+    }
+
+    fn add_transform(&mut self, transform: Mat4) {
+        self.as_ref().add_transform(transform);
     }
 
     fn pdf_value(&self, o: Vec3, v: Vec3) -> f32 {
@@ -146,6 +155,12 @@ impl Object for Objects {
         aabb
     }
 
+    fn add_transform(&mut self, transform: Mat4) {
+        for object in &self.objects {
+            object.add_transform(transform)
+        }
+    }
+
     fn pdf_value(&self, o: Vec3, v: Vec3) -> f32 {
         debug_assert!(!self.objects.is_empty());
         self.objects.iter().map(|h| h.pdf_value(o, v)).sum::<f32>() / self.objects.len() as f32
@@ -167,12 +182,106 @@ impl Object for EmptyObject {
         None
     }
 
+    fn add_transform(&mut self, transform: Mat4) {}
+
     fn pdf_value(&self, _o: Vec3, _v: Vec3) -> f32 {
         0.0
     }
 
     fn random(&self, _rng: &mut SmallRng, _o: Vec3) -> Vec3 {
         Vec3::ZERO
+    }
+}
+
+pub enum Geometry {
+    Sphere(Sphere),
+    Rect(Rect),
+    Cuboid(Cuboid),
+    BvhNode(BvhNode),
+}
+
+impl Geometry {
+    pub fn sphere(center: Point3, radius: f32, material: Arc<dyn Material>) -> Self {
+        Self::Sphere(Sphere::new(center, radius, material))
+    }
+
+    pub fn sphere_moving(
+        center0: Point3,
+        center1: Point3,
+        radius: f32,
+        material: Arc<dyn Material>,
+        time_range: Range<f32>,
+    ) -> Self {
+        Self::Sphere(Sphere::new_moving(
+            center0, center1, radius, material, time_range,
+        ))
+    }
+
+    pub fn rect(
+        axis: Axis,
+        p0: f32,
+        q0: f32,
+        p1: f32,
+        q1: f32,
+        k: f32,
+        material: Arc<dyn Material>,
+    ) -> Self {
+        Self::Rect(Rect::new(axis, p0, q0, p1, q1, k, material))
+    }
+
+    pub fn cuboid(box_min: Point3, box_max: Point3, material: Arc<dyn Material>) -> Self {
+        Self::Cuboid(Cuboid::new(box_min, box_max, material))
+    }
+
+    pub fn bvh_node(objects: &mut Objects, start: usize, end: usize, time: Range<f32>) -> Self {
+        Self::BvhNode(BvhNode::new(objects, start, end, time))
+    }
+}
+
+impl Object for Geometry {
+    fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        match self {
+            Geometry::Sphere(g) => g.hit(r, t_min, t_max),
+            Geometry::Rect(g) => g.hit(r, t_min, t_max),
+            Geometry::Cuboid(g) => g.hit(r, t_min, t_max),
+            Geometry::BvhNode(g) => g.hit(r, t_min, t_max),
+        }
+    }
+
+    fn bounding_box(&self, time_range: &Range<f32>) -> Option<Aabb> {
+        match self {
+            Geometry::Sphere(g) => g.bounding_box(time_range),
+            Geometry::Rect(g) => g.bounding_box(time_range),
+            Geometry::Cuboid(g) => g.bounding_box(time_range),
+            Geometry::BvhNode(g) => g.bounding_box(time_range),
+        }
+    }
+
+    fn pdf_value(&self, o: Vec3, v: Vec3) -> f32 {
+        match self {
+            Geometry::Sphere(g) => g.pdf_value(o, v),
+            Geometry::Rect(g) => g.pdf_value(o, v),
+            Geometry::Cuboid(g) => g.pdf_value(o, v),
+            Geometry::BvhNode(g) => g.pdf_value(o, v),
+        }
+    }
+
+    fn random(&self, rng: &mut SmallRng, o: Vec3) -> Vec3 {
+        match self {
+            Geometry::Sphere(g) => g.random(rng, o),
+            Geometry::Rect(g) => g.random(rng, o),
+            Geometry::Cuboid(g) => g.random(rng, o),
+            Geometry::BvhNode(g) => g.random(rng, o),
+        }
+    }
+
+    fn add_transform(&mut self, transform: Mat4) {
+        match self {
+            Geometry::Sphere(g) => g.add_transform(transform),
+            Geometry::Rect(g) => g.add_transform(transform),
+            Geometry::Cuboid(g) => g.add_transform(transform),
+            Geometry::BvhNode(g) => g.add_transform(transform),
+        }
     }
 }
 
@@ -208,6 +317,8 @@ where
     fn bounding_box(&self, time_range: &Range<f32>) -> Option<Aabb> {
         self.object.bounding_box(time_range)
     }
+
+    fn add_transform(&mut self, transform: Mat4) {}
 }
 
 impl<T> Translate<T> {
@@ -241,6 +352,8 @@ where
             None
         }
     }
+
+    fn add_transform(&mut self, transform: Mat4) {}
 }
 
 pub struct Rotate<T> {
@@ -324,12 +437,16 @@ where
     fn bounding_box(&self, _time_range: &Range<f32>) -> Option<Aabb> {
         self.bbox
     }
+
+    fn add_transform(&mut self, transform: Mat4) {}
 }
 
 pub struct ConstantMedium<O> {
     pub boundary: O,
     pub phase_function: Isotropic<Color>,
     pub neg_inv_density: f32,
+    transform: Mat4,
+    inv_transform: Mat4,
 }
 
 impl<O> ConstantMedium<O> {
@@ -338,6 +455,8 @@ impl<O> ConstantMedium<O> {
             boundary,
             phase_function: Isotropic::new(color),
             neg_inv_density: -1.0 / d,
+            transform: Mat4::IDENTITY,
+            inv_transform: Mat4::IDENTITY,
         }
     }
 }
@@ -347,9 +466,10 @@ where
     O: Object,
 {
     fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        let r = r.transform(self.inv_transform);
         let mut rng = SmallRng::from_entropy();
-        let mut rec1 = self.boundary.hit(r, f32::MIN, f32::MAX)?;
-        let mut rec2 = self.boundary.hit(r, rec1.t + 0.0001, f32::MAX)?;
+        let mut rec1 = self.boundary.hit(&r, f32::MIN, f32::MAX)?;
+        let mut rec2 = self.boundary.hit(&r, rec1.t + 0.0001, f32::MAX)?;
         rec1.t = rec1.t.max(t_min);
         rec2.t = rec2.t.min(t_max);
         if rec1.t >= rec2.t {
@@ -363,8 +483,9 @@ where
             return None;
         }
         let t = rec1.t + hit_distance / ray_length;
+        let p = r.at(t);
         Some(HitRecord::new(
-            r.at(t),
+            self.transform.transform_point3(p),
             vec3(1.0, 0.0, 0.0), // arbitrary
             Arc::new(self.phase_function.clone()),
             t,
@@ -377,4 +498,6 @@ where
     fn bounding_box(&self, time_range: &std::ops::Range<f32>) -> Option<crate::aabb::Aabb> {
         self.boundary.bounding_box(time_range)
     }
+
+    fn add_transform(&mut self, transform: Mat4) {}
 }

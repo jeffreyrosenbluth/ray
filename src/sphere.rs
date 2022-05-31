@@ -12,6 +12,8 @@ pub struct Sphere {
     pub center0: Point3,
     pub center1: Point3,
     pub radius: f32,
+    transform: Mat4,
+    inv_transform: Mat4,
     pub material: Arc<dyn Material>,
     pub time_range: Range<f32>,
 }
@@ -24,20 +26,28 @@ impl Sphere {
         material: Arc<dyn Material>,
         time_range: Range<f32>,
     ) -> Self {
+        let transform = Mat4::IDENTITY;
+        let inv_transform = Mat4::IDENTITY;
         Self {
             center0,
             center1,
             radius,
+            transform,
+            inv_transform,
             material,
             time_range,
         }
     }
 
     pub fn new(center0: Point3, radius: f32, material: Arc<dyn Material>) -> Self {
+        let transform = Mat4::IDENTITY;
+        let inv_transform = Mat4::IDENTITY;
         Self {
             center0,
             center1: center0,
             radius,
+            transform,
+            inv_transform,
             material,
             time_range: 0.0..0.0,
         }
@@ -62,6 +72,7 @@ pub fn sphere_uv(p: Point3) -> (f32, f32) {
 
 impl Object for Sphere {
     fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
+        let r = r.transform(self.inv_transform);
         let oc = r.origin - self.center(r.time);
         let a = r.direction.length_squared();
         let half_b = dot(oc, r.direction);
@@ -82,9 +93,21 @@ impl Object for Sphere {
             };
         }
         let p = r.at(root);
-        let outward_normal = (p - self.center(r.time)) / self.radius;
+        let outward_normal = self
+            .inv_transform
+            .transpose()
+            .transform_vector3((p - self.center(r.time)) / self.radius)
+            .normalize();
         let (u, v) = sphere_uv(outward_normal);
-        let rec = HitRecord::with_ray(r, p, outward_normal, self.material.clone(), root, u, v);
+        let rec = HitRecord::with_ray(
+            &r,
+            self.transform.transform_point3(p),
+            outward_normal,
+            self.material.clone(),
+            root,
+            u,
+            v,
+        );
         Some(rec)
     }
 
@@ -110,6 +133,11 @@ impl Object for Sphere {
         } else {
             1.0
         }
+    }
+
+    fn add_transform(&mut self, transform: Mat4) {
+        self.transform = transform * self.transform;
+        self.inv_transform = transform.inverse() * self.inv_transform;
     }
 
     fn random(&self, rng: &mut SmallRng, o: Vec3) -> Vec3 {
