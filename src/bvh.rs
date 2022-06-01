@@ -94,4 +94,6 @@ impl Object for BvhNode {
     fn bounding_box(&self, _time_range: &std::ops::Range<f32>) -> Option<Aabb> {
         Some(self.bbox)
     }
+
+    fn add_transform(&mut self, _transform: glam::Mat4) {}
 }

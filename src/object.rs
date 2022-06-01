@@ -77,7 +77,7 @@ impl HitRecord {
 pub trait Object: Send + Sync {
     fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord>;
     fn bounding_box(&self, time_range: &Range<f32>) -> Option<Aabb>;
-    fn add_transform(&mut self, _transform: Mat4) {}
+    fn add_transform(&mut self, _transform: Mat4);
     fn pdf_value(&self, _o: Vec3, _v: Vec3) -> f32 {
         panic!("The default implementaion of pdf_value should never be called.");
     }
@@ -178,7 +178,7 @@ impl Object for EmptyObject {
         None
     }
 
-    fn add_transform(&mut self, transform: Mat4) {}
+    fn add_transform(&mut self, _transform: Mat4) {}
 
     fn pdf_value(&self, _o: Vec3, _v: Vec3) -> f32 {
         0.0
@@ -200,11 +200,6 @@ impl<T> FlipFace<T> {
     }
 }
 
-pub struct Translate<T> {
-    pub object: T,
-    pub offset: Vec3,
-}
-
 impl<T> Object for FlipFace<T>
 where
     T: Object,
@@ -222,127 +217,9 @@ where
         self.object.bounding_box(time_range)
     }
 
-    fn add_transform(&mut self, transform: Mat4) {}
-}
-
-impl<T> Translate<T> {
-    pub fn new(object: T, offset: Vec3) -> Self {
-        Self { object, offset }
+    fn add_transform(&mut self, transform: Mat4) {
+        self.object.add_transform(transform);
     }
-}
-
-impl<T> Object for Translate<T>
-where
-    T: Object,
-{
-    fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
-        let moved_r = Ray::new(r.origin - self.offset, r.direction, r.time);
-        if let Some(mut rec) = self.object.hit(&moved_r, t_min, t_max) {
-            rec.p += self.offset;
-            rec.set_face_normal(&moved_r, rec.normal);
-            Some(rec)
-        } else {
-            None
-        }
-    }
-
-    fn bounding_box(&self, time_range: &Range<f32>) -> Option<Aabb> {
-        if let Some(bbox) = self.object.bounding_box(time_range) {
-            Some(Aabb::new(
-                bbox.box_min + self.offset,
-                bbox.box_max + self.offset,
-            ))
-        } else {
-            None
-        }
-    }
-
-    fn add_transform(&mut self, transform: Mat4) {}
-}
-
-pub struct Rotate<T> {
-    pub axis: Axis,
-    pub object: T,
-    pub sin: f32,
-    pub cos: f32,
-    pub bbox: Option<Aabb>,
-}
-
-impl<T> Rotate<T>
-where
-    T: Object,
-{
-    pub fn new(axis: Axis, object: T, degrees: f32) -> Self {
-        let theta = degrees * PI / 180.0;
-        let sin = theta.sin();
-        let cos = theta.cos();
-        let mut rect = Aabb::empty();
-        let (p, q, s) = axis.order();
-        let bbox = object.bounding_box(&(0.0..1.0)).map(|b| {
-            for i in 0..2 {
-                for j in 0..2 {
-                    for k in 0..2 {
-                        let x = i as f32 * b.box_max.x + (1.0 - i as f32) * b.box_min.x;
-                        let y = j as f32 * b.box_max.y + (1.0 - j as f32) * b.box_min.y;
-                        let z = k as f32 * b.box_max.z + (1.0 - k as f32) * b.box_min.z;
-                        let coords = vec3(x, y, z);
-                        let newp = cos * coords[p] + sin * coords[q];
-                        let newq = -sin * coords[p] + cos * coords[q];
-                        let mut tester = Vec3::ZERO;
-                        tester[p] = newp;
-                        tester[q] = newq;
-                        tester[s] = coords[s];
-                        for c in 0..3 {
-                            rect.box_min[c] = rect.box_min[c].min(tester[c]);
-                            rect.box_max[c] = rect.box_max[c].min(tester[c]);
-                        }
-                    }
-                }
-            }
-            rect
-        });
-        Self {
-            axis,
-            object,
-            sin,
-            cos,
-            bbox,
-        }
-    }
-}
-
-impl<T> Object for Rotate<T>
-where
-    T: Object,
-{
-    fn hit(&self, r: &Ray, t_min: f32, t_max: f32) -> Option<HitRecord> {
-        let mut origin = r.origin;
-        let mut direction = r.direction;
-        let (p, q, _) = self.axis.order();
-        origin[p] = self.cos * r.origin[p] - self.sin * r.origin[q];
-        origin[q] = self.sin * r.origin[p] + self.cos * r.origin[q];
-        direction[p] = self.cos * r.direction[p] - self.sin * r.direction[q];
-        direction[q] = self.sin * r.direction[p] + self.cos * r.direction[q];
-        let rotated_r = Ray::new(origin, direction, r.time);
-        let hr = self.object.hit(&rotated_r, t_min, t_max).map(|mut rec| {
-            let mut pt = rec.p;
-            let mut normal = rec.normal;
-            pt[p] = self.cos * rec.p[p] + self.sin * rec.p[q];
-            pt[q] = -self.sin * rec.p[p] + self.cos * rec.p[q];
-            normal[p] = self.cos * rec.normal[p] + self.sin * rec.normal[q];
-            normal[q] = -self.sin * rec.normal[p] + self.cos * rec.normal[q];
-            rec.p = pt;
-            rec.set_face_normal(&rotated_r, normal);
-            rec
-        });
-        hr
-    }
-
-    fn bounding_box(&self, _time_range: &Range<f32>) -> Option<Aabb> {
-        self.bbox
-    }
-
-    fn add_transform(&mut self, transform: Mat4) {}
 }
 
 pub struct ConstantMedium<O> {
@@ -403,5 +280,7 @@ where
         self.boundary.bounding_box(time_range)
     }
 
-    fn add_transform(&mut self, transform: Mat4) {}
+    fn add_transform(&mut self, transform: Mat4) {
+        self.boundary.add_transform(transform);
+    }
 }

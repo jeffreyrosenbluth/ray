@@ -98,12 +98,12 @@ impl Object for Rect {
         b[p] = self.p1;
         b[q] = self.q1;
         b[s] = self.k + 0.0001;
-        Some(Aabb::new(a, b))
+        Some(Aabb::new(a, b).transform_box(self.transform))
     }
 
     fn add_transform(&mut self, transform: Mat4) {
         self.transform = transform * self.transform;
-        self.inv_transform = transform.inverse() * self.inv_transform;
+        self.inv_transform = self.inv_transform * transform.inverse();
     }
 
     fn pdf_value(&self, o: Vec3, v: Vec3) -> f32 {
@@ -207,14 +207,13 @@ impl Object for Cuboid {
         self.sides.hit(r, t_min, t_max)
     }
 
-    fn bounding_box(&self, _time_range: &std::ops::Range<f32>) -> Option<Aabb> {
-        Some(Aabb::new(self.box_min, self.box_max))
+    fn bounding_box(&self, time_range: &std::ops::Range<f32>) -> Option<Aabb> {
+        self.sides.bounding_box(time_range)
     }
 
     fn add_transform(&mut self, transform: Mat4) {
         self.sides.objects.iter_mut().for_each(|side| {
             side.add_transform(transform);
-            dbg!(transform);
         });
     }
 }

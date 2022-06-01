@@ -237,8 +237,7 @@ pub fn book2_final_scene() -> Environment {
     let boundary = Sphere::new(Vec3::ZERO, 5000.0, dielectric(1.5));
     objects.add(ConstantMedium::new(boundary, WHITE, 0.0001));
 
-    let earth_texture =
-        ImageTexture::new("/Users/jeffreyrosenbluth/Develop/ray/assets/earthmap.jpeg");
+    let earth_texture = ImageTexture::new("/Users/jeffreyrosenbluth/Develop/ray/assets/warp.jpeg");
     let earth = lambertian_texture(earth_texture);
     objects.add(Sphere::new(point3(400.0, 200.0, 400.0), 100.0, earth));
     let perlin_texture = PerlinTexture::new(0.08);
@@ -255,11 +254,10 @@ pub fn book2_final_scene() -> Environment {
             white.clone(),
         ));
     }
-
-    objects.add(Translate::new(
-        Rotate::new(Axis::Y, BvhNode::new(&mut boxes2, 0, ns, 0.0..1.0), 15.0),
-        vec3(-100.0, 270.0, 395.0),
-    ));
+    boxes2.add_transform(Mat4::from_rotation_y(degrees_to_radians(15.0)));
+    boxes2.add_transform(Mat4::from_translation(vec3(-100.0, 270.0, 395.0)));
+    let n = boxes2.objects.len();
+    objects.add(BvhNode::new(&mut boxes2, 0, n, 0.0..1.0));
 
     let camera = Camera::new(
         point3(478.0, 278.0, -600.0),
@@ -271,7 +269,7 @@ pub fn book2_final_scene() -> Environment {
         10.0,
         0.0..1.0,
     );
-    let rparams = RenderParams::new(BLACK, 1.0, 800, 1000, 50);
+    let rparams = RenderParams::new(BLACK, 1.0, 400, 10, 50);
     Environment::new(Box::new(objects), camera, Arc::new(light_rect), rparams)
 }
 

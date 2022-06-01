@@ -102,7 +102,7 @@ impl Object for Sphere {
         let outward_normal = self
             .inv_transform
             .transpose()
-            .transform_vector3((p - self.center(r.time)) / self.radius)
+            .transform_vector3(p - self.center(r.time))
             .normalize();
         let (u, v) = sphere_uv(outward_normal);
         let rec = HitRecord::with_ray(
@@ -127,7 +127,10 @@ impl Object for Sphere {
             self.center(time_range.end) + vec3(self.radius, self.radius, self.radius),
         );
 
-        Some(surrounding_box(box0, box1))
+        Some(surrounding_box(
+            box0.transform_box(self.transform),
+            box1.transform_box(self.transform),
+        ))
     }
 
     fn pdf_value(&self, o: Vec3, v: Vec3) -> f32 {
@@ -143,7 +146,7 @@ impl Object for Sphere {
 
     fn add_transform(&mut self, transform: Mat4) {
         self.transform = transform * self.transform;
-        self.inv_transform = transform.inverse() * self.inv_transform;
+        self.inv_transform = self.inv_transform * transform.inverse();
     }
 
     fn random(&self, rng: &mut SmallRng, o: Vec3) -> Vec3 {
